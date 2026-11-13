@@ -1,0 +1,275 @@
+/* ============================================================
+   Starscope design tokens
+   Structure follows website-ui-designer/assets/design-tokens.css:
+   1) primitives  2) semantic  3) component. Components may only
+   reference layers 2 and 3.
+   Direction: bold-creative (dark), with a light semantic override.
+   Contrast values are asserted in tests/contrast.js.
+   ============================================================ */
+:root {
+  /* ---------- Layer 1: primitives ---------------------------------- */
+  --gray-0:   #FFFFFF;
+  --gray-50:  #FAFAFB;
+  --gray-100: #F5F5F7;
+  --gray-200: #E4E4E9;
+  --gray-300: #D4D4D8;
+  --gray-400: #A6A6B2;
+  --gray-500: #8A8A96;
+  --gray-600: #71717A;
+  --gray-700: #3F3F46;
+  --gray-800: #2A2A32;
+  --gray-900: #16161A;
+  --gray-950: #0A0A0B;
+
+  --red-400:    #FF6B4F;
+  --red-500:    #FF4D2E;
+  --red-600:    #E63A1C;
+  --red-700:    #C42E13;
+  --violet-400: #9B82FF;
+  --violet-500: #7C5CFF;
+  --violet-600: #6B48F0;
+  --green-500:  #2ED47A;
+  --amber-500:  #FFB020;
+  --rose-500:   #FF3B5C;
+  --cyan-500:   #22D3EE;
+
+  --size-1: 4px;   --size-2: 8px;   --size-3: 12px;  --size-4: 16px;
+  --size-5: 20px;  --size-6: 24px;  --size-8: 32px;  --size-10: 40px;
+  --size-12: 48px; --size-16: 64px; --size-20: 80px; --size-24: 96px;
+  --size-32: 128px;
+
+  /* ---------- Layer 2: semantic ------------------------------------ */
+  --bg:          var(--gray-950);
+  --bg-subtle:   var(--gray-900);
+  --surface:     var(--gray-900);
+  --surface-2:   var(--gray-800);
+  --surface-3:   #202027;
+  --overlay:     rgba(10, 10, 11, 0.72);
+
+  --border:        var(--gray-800);
+  --border-strong: var(--gray-700);
+
+  --text:         var(--gray-100);
+  --text-muted:   var(--gray-400);
+  --text-faint:   var(--gray-500);
+  --text-inverse: var(--gray-950);
+
+  --accent:          var(--red-500);
+  --accent-hover:    var(--red-400);
+  --accent-subtle:   rgba(255, 77, 46, 0.12);
+  --accent-2:        var(--violet-500);
+  --accent-2-hover:  var(--violet-400);
+  --accent-2-subtle: rgba(124, 92, 255, 0.14);
+  /* Dark ink on vermilion passes AA; white on vermilion does not. */
+  --accent-contrast: var(--gray-950);
+
+  --success: var(--green-500);  --success-subtle: rgba(46, 212, 122, 0.14);
+  --warn:    var(--amber-500);  --warn-subtle:    rgba(255, 176, 32, 0.14);
+  --danger:  var(--rose-500);   --danger-subtle:  rgba(255, 59, 92, 0.14);
+  --info:    var(--cyan-500);   --info-subtle:    rgba(34, 211, 238, 0.12);
+
+  --focus-ring: var(--violet-400);
+
+  /* ---------- Space scale ------------------------------------------ */
+  --space-1: var(--size-1);   --space-2: var(--size-2);
+  --space-3: var(--size-3);   --space-4: var(--size-4);
+  --space-5: var(--size-5);   --space-6: var(--size-6);
+  --space-8: var(--size-8);   --space-10: var(--size-10);
+  --space-12: var(--size-12); --space-16: var(--size-16);
+  --space-20: var(--size-20); --space-24: var(--size-24);
+  --space-32: var(--size-32);
+
+  --section-y:        clamp(3.5rem, 8vw, 7.5rem);
+  --section-y-tight:  clamp(2.5rem, 5vw, 4.5rem);
+  --container-max:    1280px;
+  --container-pad:    clamp(1rem, 3vw, 2rem);
+  --measure:          68ch;
+
+  /* ---------- Radius ----------------------------------------------- */
+  --radius-sm:   6px;
+  --radius-md:   10px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-full: 9999px;
+
+  /* ---------- Elevation -------------------------------------------- */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.32);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.44);
+  --glow-accent: 0 0 0 1px rgba(255, 77, 46, 0.35), 0 8px 32px rgba(255, 77, 46, 0.18);
+
+  /* ---------- Typography ------------------------------------------- */
+  --font-display: "Inter", system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-body:    "Inter", system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --text-hero: clamp(2.5rem, 1.5rem + 5vw, 5.5rem);
+  --text-h1:   clamp(2rem, 1.35rem + 2.6vw, 3.5rem);
+  --text-h2:   clamp(1.5rem, 1.2rem + 1.4vw, 2.25rem);
+  --text-h3:   clamp(1.25rem, 1.1rem + 0.7vw, 1.5rem);
+  --text-h4:   1.125rem;
+  --text-body: 1rem;
+  --text-sm:   0.875rem;
+  --text-xs:   0.75rem;
+
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+  --weight-black:    900;
+
+  --leading-tight:   1.05;
+  --leading-snug:    1.3;
+  --leading-normal:  1.6;
+  --leading-relaxed: 1.75;
+
+  --tracking-display: -0.03em;
+  --tracking-tight:   -0.015em;
+  --tracking-normal:  0;
+  --tracking-label:   0.12em;
+
+  /* ---------- Motion ----------------------------------------------- */
+  --dur-fast:   120ms;
+  --dur-base:   200ms;
+  --dur-slow:   320ms;
+  --dur-slower: 500ms;
+  --ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+
+  /* ---------- Z-index ---------------------------------------------- */
+  --z-base: 0; --z-dropdown: 100; --z-sticky: 200;
+  --z-modal: 300; --z-toast: 400; --z-tooltip: 500;
+
+  /* ---------- Layer 3: component ----------------------------------- */
+  --card-bg:      var(--surface);
+  --card-border:  1px solid var(--border);
+  --card-padding: var(--space-6);
+  --card-radius:  var(--radius-lg);
+
+  --btn-radius:   var(--radius-md);
+  --btn-pad-y:    0.7rem;
+  --btn-pad-x:    1.2rem;
+  --btn-font:     var(--text-sm);
+  --btn-weight:   var(--weight-semibold);
+  --btn-dur:      var(--dur-fast);
+
+  --input-bg:     var(--surface-2);
+  --input-border: 1px solid var(--border);
+  --input-radius: var(--radius-md);
+  --input-pad:    0.7rem 0.9rem;
+
+  --nav-height:   68px;
+  --rail-width:   244px;
+  --tabpanel-gap: var(--space-5);
+  --row-padding:  var(--space-4) var(--space-5);
+  --chip-bg:      var(--surface-2);
+  --chip-color:   var(--text-muted);
+}
+
+/* Light theme overrides the SEMANTIC layer only. */
+[data-theme="light"] {
+  --bg:          var(--gray-50);
+  --bg-subtle:   var(--gray-100);
+  --surface:     var(--gray-0);
+  --surface-2:   var(--gray-100);
+  --surface-3:   var(--gray-200);
+  --overlay:     rgba(17, 24, 39, 0.48);
+
+  --border:        var(--gray-200);
+  --border-strong: var(--gray-300);
+
+  --text:         #111827;
+  --text-muted:   #4B5563;
+  --text-faint:   #5A6270;
+  --text-inverse: var(--gray-0);
+
+  --accent:          var(--red-700);
+  --accent-hover:    var(--red-600);
+  --accent-subtle:   rgba(196, 46, 19, 0.08);
+  --accent-2:        #5B3BE0;
+  --accent-2-hover:  #4A2ECB;
+  --accent-2-subtle: rgba(91, 59, 224, 0.10);
+  --accent-contrast: var(--gray-0);
+
+  --success: #127A4B; --success-subtle: rgba(18, 122, 75, 0.10);
+  --warn:    #8A5600; --warn-subtle:    rgba(138, 86, 0, 0.10);
+  --danger:  #B3261E; --danger-subtle:  rgba(179, 38, 30, 0.09);
+  --info:    #0E6E86; --info-subtle:    rgba(14, 110, 134, 0.10);
+
+  --focus-ring: #5B3BE0;
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 12px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 12px 32px rgba(16, 24, 40, 0.12);
+  --glow-accent: 0 0 0 1px rgba(196, 46, 19, 0.22), 0 8px 28px rgba(196, 46, 19, 0.12);
+
+  --input-bg:   var(--gray-0);
+  --card-bg:    var(--gray-0);
+  --chip-bg:    var(--gray-100);
+  --chip-color: var(--text-muted);
+}
+
+/* ---------- base reset -------------------------------------------- */
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--text-body);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--weight-bold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-tight);
+  text-wrap: balance;
+}
+p { margin: 0; text-wrap: pretty; }
+img, svg, video { display: block; max-width: 100%; height: auto; }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; border-radius: var(--radius-sm); }
+::selection { background: var(--accent); color: var(--accent-contrast); }
+
+/* ---------- layout utilities -------------------------------------- */
+.container { width: min(100% - (var(--container-pad) * 2), var(--container-max)); margin-inline: auto; }
+.section { padding-block: var(--section-y); }
+.section--tight { padding-block: var(--section-y-tight); }
+.stack > * + * { margin-top: var(--space-4); }
+.cluster { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.grid-auto { display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); }
+.eyebrow {
+  font-family: var(--font-mono); font-size: var(--text-xs);
+  font-weight: var(--weight-medium); letter-spacing: var(--tracking-label);
+  text-transform: uppercase; color: var(--text-faint);
+}
+.text-muted { color: var(--text-muted); }
+.measure { max-width: var(--measure); }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.skip-link {
+  position: absolute; left: var(--space-4); top: calc(var(--nav-height) * -1);
+  z-index: var(--z-toast); background: var(--accent); color: var(--accent-contrast);
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius-md);
+  transition: top var(--dur-base) var(--ease-out);
+}
+.skip-link:focus { top: var(--space-3); color: var(--accent-contrast); }
+
+/* ---------- motion safety ----------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

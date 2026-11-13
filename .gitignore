@@ -1,0 +1,24 @@
+__pycache__/
+*.pyc
+.DS_Store
+
+# local-only build artifacts and probes
+_*.log
+_*.png
+repos_cache.json
+_preview*.png
+_preview*.html
+_shot_*
+_v_*.png
+_wb_check.js
+_t_*.txt
+_dev.html
+site/_probe*.html
+site/_light.html
+site/_frame.html
+site/_shot*.html
+
+# host-specific files: must never be committed
+hosts.backup-*.bak
+.wbapp_*.genie
+.workbuddy/

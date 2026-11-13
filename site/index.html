@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Starscope · GitHub 项目雷达</title>
+<meta name="description" content="按分类与标签浏览 GitHub 项目，已收录项目按星标与增量从高到低完整列出，顺着标签发现目录之外的工具。">
+<meta name="color-scheme" content="dark light">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Starscope">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="Starscope · GitHub 项目雷达">
+<meta property="og:description" content="按分类与标签浏览 GitHub 项目，已收录项目按星标与增量从高到低完整列出，顺着标签发现目录之外的工具。">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Starscope · GitHub 项目雷达">
+<meta name="twitter:description" content="按分类与标签浏览 GitHub 项目，已收录项目按星标与增量从高到低完整列出，顺着标签发现目录之外的工具。">
+<script type="application/ld+json">{"@context": "https://schema.org", "@type": "WebSite", "name": "Starscope", "description": "按分类与标签浏览 GitHub 项目，已收录项目按星标与增量从高到低完整列出，顺着标签发现目录之外的工具。", "inLanguage": "zh-CN"}</script>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body>
+<a class="skip-link" href="#main">跳到主内容</a>
+
+<header class="site-header" id="siteHeader">
+  <div class="container nav">
+    <a class="nav__brand" href="#top" aria-label="Starscope 首页">
+      <span class="nav__mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#0A0A0B" stroke-width="2.2" stroke-linecap="round">
+          <circle cx="11" cy="11" r="7"></circle><path d="M16.5 16.5 21 21"></path><path d="M11 7.5v7M7.5 11h7"></path>
+        </svg>
+      </span>
+      Starscope
+    </a>
+    <span class="nav__sub">GitHub 项目雷达</span>
+    <nav class="nav__links" aria-label="主导航">
+      <a href="#explore">项目浏览</a>
+      <a href="#method">数据口径</a>
+      <a href="#about">关于</a>
+    </nav>
+    <div class="nav__actions">
+      <span class="status-pill" title="数据快照时间"><i class="status-pill__dot" aria-hidden="true"></i><span id="snapshotStatus">读取中</span></span>
+      <button class="btn btn--ghost btn--icon" id="themeToggle" type="button" aria-label="切换明暗主题" title="切换明暗主题">◐</button>
+      <button class="btn btn--primary btn--sm" id="navTags" type="button">标签探索</button>
+      <button class="nav__toggle" id="navToggle" type="button" aria-label="打开菜单" aria-expanded="false" aria-controls="navMenu">☰</button>
+    </div>
+  </div>
+  <div class="mobile-menu" id="navMenu" data-open="false">
+    <a href="#explore">项目浏览</a>
+    <a href="#method">数据口径</a>
+    <a href="#about">关于</a>
+  </div>
+</header>
+
+<main id="main">
+  <span id="top"></span>
+
+  <!-- 1. HERO -->
+  <section class="hero" aria-labelledby="heroTitle">
+    <div class="container hero__grid">
+      <div>
+        <p class="eyebrow" data-reveal>GitHub discovery · 快照 2026-11-14 05:11</p>
+        <h1 class="hero__title" id="heroTitle" data-reveal>别让<em>好项目</em><br>埋在历史排名里。</h1>
+        <p class="hero__sub" data-reveal>按分类浏览、按标签筛选，已收录项目从高到低完整列出，不做「前 N 名」截断。累计星标只记录过去，涨势目录给你现在正在发生的事。</p>
+        <div class="hero__actions" data-reveal>
+          <a class="btn btn--primary" href="#explore" id="heroExplore">开始探索 ↓</a>
+          <button class="btn btn--ghost" type="button" id="heroRising">直接看涨势目录</button>
+        </div>
+        <div class="hero__proof" data-reveal>
+          <span><i aria-hidden="true"></i>GitHub Search API</span>
+          <span><i aria-hidden="true"></i>Trending 多语言聚合</span>
+          <span><i aria-hidden="true"></i>已收录项目完整列出</span>
+        </div>
+      </div>
+      <div class="hero__visual" data-reveal>
+        <div class="hero__visual-head"><strong>今日新增星标 · 头部 24 项</strong><span>LIVE SNAPSHOT</span></div>
+        <div class="sparkbars" id="heroBarcode" role="img" aria-label="今日新增星标最高的 24 个项目对比条形图"></div>
+        <div class="hero__visual-foot"><span>数据源 GitHub Trending</span><span id="heroPeak">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. KPI -->
+  <section class="container kpis" aria-label="数据规模">
+    <article class="kpi" data-reveal><p class="kpi__label">Catalogue</p><p class="kpi__value" id="kpiRepos">—</p><p class="kpi__note">累计目录去重项目</p></article>
+    <article class="kpi" data-reveal><p class="kpi__label">Momentum</p><p class="kpi__value" id="kpiTrending">—</p><p class="kpi__note">日 / 周 / 月窗口合计</p></article>
+    <article class="kpi" data-reveal><p class="kpi__label">Topics</p><p class="kpi__value" id="kpiTopics">—</p><p class="kpi__note">可继续探索的标签</p></article>
+    <article class="kpi" data-reveal><p class="kpi__label">Categories</p><p class="kpi__value" id="kpiCats">—</p><p class="kpi__note">贯穿所有视角的分类</p></article>
+  </section>
+
+  <!-- 3. WORKBENCH -->
+  <section class="workbench" id="explore" aria-labelledby="exploreTitle">
+    <div class="container">
+      <div class="section-head__row" style="margin-bottom: var(--space-6)">
+        <div class="section-head">
+          <p class="eyebrow">Workbench</p>
+          <h2 id="exploreTitle">项目浏览器</h2>
+          <p>已收录项目按分数从高到低完整列出，筛选条件随时可见、一键可清。</p>
+        </div>
+        <div class="cluster">
+          <button class="btn btn--ghost btn--sm" id="copyLinkBtn" type="button">复制当前视图链接</button>
+          <button class="btn btn--ghost btn--sm" id="refreshBtn" type="button">数据说明与更新</button>
+        </div>
+      </div>
+
+      <div class="wb">
+        <aside class="rail" id="rail" aria-label="分类与热门标签"></aside>
+
+        <div class="panel">
+          <div class="panel__head">
+            <div class="tabs" id="tabs" role="tablist" aria-label="目录视角">
+              <button class="tab" role="tab" data-view="total" aria-selected="true" aria-controls="list" type="button">累计目录<span class="tab__badge">按星标</span></button>
+              <button class="tab" role="tab" data-view="rising" aria-selected="false" aria-controls="list" type="button">涨势目录<span class="tab__badge">按增量</span></button>
+              <button class="tab" role="tab" data-view="new" aria-selected="false" aria-controls="list" type="button">新星目录<span class="tab__badge">按起速</span></button>
+              <button class="tab" role="tab" data-view="tags" aria-selected="false" aria-controls="list" type="button">标签探索<span class="tab__badge">找更多</span></button>
+            </div>
+          </div>
+          <p class="hint" id="hint"></p>
+          <div class="subbar" id="subbar"></div>
+
+          <section class="tagpanel" id="tagpanel" aria-labelledby="tagPanelTitle" hidden>
+            <h3 id="tagPanelTitle">按标签发现项目</h3>
+            <p class="tagpanel__sub">快照只收录有限项目。点项目上的 #标签、从标签云选一个，或直接输入标签，即可实时向 GitHub 查询同类项目，把目录之外的项目也找出来。</p>
+            <div class="tag-form">
+              <label class="sr-only" for="tagInput">标签或关键词</label>
+              <input class="tag-form__input" id="tagInput" type="search" placeholder="输入标签，如 rss、self-hosted、cli…" autocomplete="off">
+              <label class="sr-only" for="tagMode">查询方式</label>
+              <select id="tagMode">
+                <option value="topic">按 topic 标签</option>
+                <option value="keyword">按名称/简介关键词</option>
+                <option value="readme">按 README 全文</option>
+              </select>
+              <button class="btn btn--primary" id="tagGo" type="button">搜索项目</button>
+            </div>
+            <div class="tag-form__advanced">
+              <label for="cloudFilter">筛选标签云<input id="cloudFilter" type="search" placeholder="例如 rust" autocomplete="off"></label>
+              <span class="tag-form__note">在线查询由浏览器直接匿名请求 GitHub 公开 API，本站不接收、不存储任何凭据。匿名额度约 10 次/分钟，繁忙时稍后重试即可。</span>
+            </div>
+            <div class="cloud" id="cloud"></div>
+            <p class="status" id="tagStatus" role="status" hidden></p>
+            <div class="related" id="related"></div>
+            <button class="btn btn--ghost btn--sm" id="moreOnlineBtn" type="button" hidden>继续从 GitHub 加载同类项目</button>
+          </section>
+
+          <div class="toolbar" id="toolbar">
+            <label class="field field--wide" for="q"><span>关键词 · 按 / 聚焦</span><input id="q" type="search" placeholder="搜索项目名、简介、标签…" autocomplete="off"></label>
+            <label class="field" for="lang"><span>语言</span><select id="lang"><option value="">全部语言</option></select></label>
+            <label class="field" for="minStars"><span>最低星标</span><select id="minStars"><option value="0">不限</option><option value="500">≥ 500</option><option value="1000">≥ 1k</option><option value="5000">≥ 5k</option><option value="10000">≥ 10k</option><option value="50000">≥ 50k</option></select></label>
+            <label class="field" for="since"><span>最近更新</span><select id="since"><option value="0">不限</option><option value="30">近 1 个月</option><option value="180">近半年</option><option value="365">近 1 年</option></select></label>
+            <label class="field" for="sort"><span>排序</span><select id="sort"></select></label>
+          </div>
+
+          <div class="filterbar" id="filterbar" aria-label="当前生效的筛选条件"></div>
+
+          <div class="summary">
+            <span id="resultInfo" role="status"></span>
+            <span class="summary__right"><span class="online-msg" id="onlineMsg"></span><button class="linkbtn" id="findMore" type="button">没找到？用标签探索 →</button></span>
+          </div>
+          <div class="list" id="list" role="tabpanel" aria-labelledby="exploreTitle"></div>
+          <div class="loadmore" id="loadmore" hidden>
+            <p id="loadmoreInfo"></p>
+            <button class="btn btn--ghost btn--sm" id="loadmoreBtn" type="button">继续加载</button>
+            <button class="btn btn--primary btn--sm" id="showAllBtn" type="button">显示全部</button>
+          </div>
+          <div id="listSentinel" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. METHOD -->
+  <section class="method" id="method" aria-labelledby="methodTitle">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">Methodology</p>
+        <h2 id="methodTitle">三种指标，别只看一种</h2>
+        <p>累计目录回答「谁攒得多」，涨势目录回答「现在谁在涨」，标签探索负责快照没收录到的长尾。三者都从高到低完整列出。</p>
+      </div>
+      <div class="grid-auto">
+        <article class="card"><p class="card__index">01 / STOCK</p><h3>累计星标</h3><p>按分类从 GitHub Search API 取回项目，每类最多 200 条，按星标从高到低完整列出，不做榜单式截断。适合找成熟、可长期依赖的基础设施，代价是老项目有先发优势。</p></article>
+        <article class="card"><p class="card__index">02 / FLOW</p><h3>窗口增量</h3><p>合并 16 张 GitHub Trending 页面，保留日 / 周 / 月全部带真实增量的项目并按新增星标降序完整列出。「涨幅 = 新增 ÷ 总量」让小基数高增长浮上来。</p></article>
+        <article class="card"><p class="card__index">03 / GRAPH</p><h3>标签扩散</h3><p>从任意项目的 topic 出发，实时查询该标签下的其他仓库，再顺着「相关标签」继续挖，把快照之外的项目也纳入结果。</p></article>
+      </div>
+      <p class="caveat"><strong>「全部」的边界：</strong>这里完整列出的是本站已收录的项目（<span id="caveatCount">—</span> 个），不是 GitHub 全量仓库——官方单次搜索最多返回 1000 条结果，快照也是定时抓取的。涨势数据仍只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今平均值，不是近 30 天净增长。</p>
+    </div>
+  </section>
+
+  <!-- 5. CTA -->
+  <section class="container" aria-label="开始使用">
+    <div class="cta-band">
+      <h2>目录里没找到？</h2>
+      <p>换一条路径：从标签出发，实时拉取 GitHub 上同类但本站还没收录的项目。</p>
+      <div class="cluster"><button class="btn btn--primary" id="ctaTags" type="button">打开标签探索</button><a class="btn btn--ghost" href="#explore">回到分类浏览</a></div>
+    </div>
+  </section>
+
+  <!-- 6. LEGAL / DATA -->
+  <section class="legal" id="legal" aria-labelledby="legalTitle">
+    <div class="container">
+      <div class="section-head">
+        <p class="eyebrow">About &amp; data</p>
+        <h2 id="legalTitle">数据来源、边界与声明</h2>
+        <p>把「全部」说清楚：这里完整列出的是本站已收录的项目，不是 GitHub 全量仓库。</p>
+      </div>
+      <div class="grid-auto">
+        <article class="card"><p class="card__index">01 / NOTICE</p><h3>非官方、非隶属</h3><p>Starscope 是独立第三方工具，与 GitHub, Inc. 无隶属、授权或背书关系。GitHub 是 GitHub, Inc. 的商标，项目名称与描述归各自所有者。本站依据 GitHub 的<a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service" target="_blank" rel="noopener">服务条款</a>、<a href="https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies" target="_blank" rel="noopener">可接受使用政策</a>与<a href="https://github.com/logos" target="_blank" rel="noopener">品牌使用说明</a>使用公开数据；上述条款核验于 2026-11-14，以官方最新文本为准。</p></article>
+        <article class="card"><p class="card__index">02 / SOURCE</p><h3>数据来源与覆盖</h3><p id="legalCoverage">累计与新星数据来自 GitHub Search API，涨势数据来自 GitHub Trending 页面的日 / 周 / 月新增星标。快照 2026-11-14 05:11（北京时间）自动生成。每类最多收录 200 条，官方单次查询上限 1000 条结果。</p></article>
+        <article class="card"><p class="card__index">03 / PRIVACY</p><h3>隐私与凭据</h3><p>本站无账号体系、无服务端日志、无第三方统计与广告；仅在浏览器本地保存主题偏好。标签探索由浏览器直接向 GitHub 公开 API 发起匿名请求，不收集、不传输任何访问凭据。匿名额度约 10 次/分钟，超限稍后重试即可。</p></article>
+        <article class="card"><p class="card__index">04 / LIMITS</p><h3>准确性与局限</h3><p>涨势数据只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今的平均值，不是近 30 天净增长。所有数字以 GitHub 实时页面为准，本站不对数据的完整性或时效性作保证。</p></article>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer" id="about">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <h4>Starscope</h4>
+        <p class="text-muted" style="max-width: 32ch">给中文开发者的 GitHub 项目发现工具。数据本地生成，页面无需登录。</p>
+      </div>
+      <div>
+        <h4>浏览</h4>
+        <ul><li><a href="#explore" data-view="total">累计目录</a></li><li><a href="#explore" data-view="rising">涨势目录</a></li><li><a href="#explore" data-view="new">新星目录</a></li><li><a href="#explore" data-view="tags">标签探索</a></li></ul>
+      </div>
+      <div>
+        <h4>数据源</h4>
+        <ul><li><a href="https://api.github.com/" target="_blank" rel="noopener">GitHub Search API</a></li><li><a href="https://github.com/trending" target="_blank" rel="noopener">GitHub Trending</a></li><li><a href="https://github.com/topics" target="_blank" rel="noopener">GitHub Topics</a></li></ul>
+      </div>
+      <div>
+        <h4>关于</h4>
+        <ul><li><a href="#legal">数据来源与声明</a></li><li><a href="#method">指标口径与局限</a></li><li>快照 2026-11-14 05:11 自动生成</li></ul>
+      </div>
+    </div>
+    <div class="footer-legal">
+      <span>快照 2026-11-14 05:11（北京时间） · 定时自动更新</span>
+      <span><a href="#legal">非 GitHub 官方产品 · 隐私与声明</a> · 星标数据以 GitHub 实时页面为准</span>
+    </div>
+  </div>
+</footer>
+
+<script src="data/snapshot.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
