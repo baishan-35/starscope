@@ -22,3 +22,7 @@ site/_shot*.html
 hosts.backup-*.bak
 .wbapp_*.genie
 .workbuddy/
+
+# generated site — built and deployed by GitHub Actions, not committed
+site/
+github-explorer.html

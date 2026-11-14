@@ -653,6 +653,10 @@ __ROWS__
     # 1) Standalone tool site: linked assets, works over http and file:// alike.
     for sub in ("assets", "data"):
         os.makedirs(os.path.join(SITE, sub), exist_ok=True)
+    # Disable Jekyll so GitHub Pages serves assets/data verbatim (no underscore
+    # rewriting) and never injects its own default theme.
+    with open(os.path.join(SITE, ".nojekyll"), "w", encoding="utf-8") as fh:
+        fh.write("")
     site_index = fill(
         '<link rel="stylesheet" href="assets/app.css">',
         '<script src="data/snapshot.js"></script>',
