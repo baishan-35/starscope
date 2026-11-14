@@ -78,10 +78,26 @@ check(siteRepos.every(r => !('u' in r) && !('cats' in r)),
   'sharded repos strip redundant u/cats fields');
 check(data.repos.every(r => !('u' in r) && !('cats' in r)),
   'single-file repos also strip u/cats (client re-derives them)');
+/* ---- Tier C: compact categories + snapshot-delta gains ---- */
+check(siteRepos.some(r => typeof r.ct === 'string') && siteRepos.filter(r => r.ct).length > 1000,
+  `repos ship compact ct categories (got ${siteRepos.filter(r => r.ct).length})`);
+const CAT_IDS = new Set(data.cats.map(c => c.id));
+check(siteRepos.every(r => typeof r.ct !== 'string' || r.ct.split(' ').every(c => CAT_IDS.has(c))),
+  'ct strings reference valid category ids');
+check(data.rules.every(r => r.id && (Array.isArray(r.w) || Array.isArray(r.k))),
+  'rules ship word and/or substring keyword lists');
+check(/normTokens/.test(app) && /ct\.split/.test(app),
+  'client mirrors the token-aware classifier and reads ct');
+for (const p of ['daily', 'weekly', 'monthly']) {
+  check(data.trending[p].every(r => r.gsrc === 'delta' || r.gsrc === 'page'),
+    `trending ${p}: every gain is labelled delta or page`);
+}
+check(data.coverage.gainSource && ['daily', 'weekly', 'monthly'].every(p => data.coverage.gainSource[p]),
+  'coverage reports the delta/page gain split');
 
 /* ---- build outputs ---- */
 for (const [label, html] of [['single-file', single], ['site', site]]) {
-  check(!/__STYLE_BLOCK__|__DATA_BLOCK__|__APP_SCRIPT__|__FAVICON_BLOCK__|__SEO_BLOCK__|__TIME__/.test(html),
+  check(!/__STYLE_BLOCK__|__DATA_BLOCK__|__APP_SCRIPT__|__FAVICON_BLOCK__|__SEO_BLOCK__|__MONITOR_BLOCK__|__RSS_LINK__|__TIME__/.test(html),
     `${label}: no unreplaced placeholders`);
   check(!/(?:gho_|ghp_|ghu_|ghs_|github_pat_)[A-Za-z0-9_]{16,}/.test(html),
     `${label}: no GitHub credential embedded`);
@@ -93,9 +109,36 @@ check(!/lorem ipsum|\[copy\]|>TODO<|>FIXME<|placeholder text/i.test(tpl),
 check(site.includes('href="assets/app.css"') && site.includes('src="data/snapshot.js"')
       && site.includes('src="data/momentum.js"') && site.includes('src="data/repos-0.js"')
       && site.includes('src="assets/app.js"'), 'site links its own assets (meta + momentum + first chunk)');
-for (const f of ['assets/app.css', 'assets/app.js', 'assets/favicon.svg', 'data/snapshot.js', 'data/momentum.js', 'data/repos-0.js']) {
+for (const f of ['assets/app.css', 'assets/app.js', 'assets/monitor.js', 'assets/favicon.svg', 'data/snapshot.js', 'data/momentum.js', 'data/repos-0.js']) {
   check(fs.existsSync(path.join(root, 'site', f)), `site/${f} exists`);
 }
+
+/* ---- runtime monitor (Tier B) ---- */
+const monitorSrc = read('src/monitor.js');
+check(site.includes('src="assets/monitor.js"') && site.includes('__ERROR_REPORT_URL__'),
+  'site loads the runtime monitor with its config');
+check(single.includes('__ERROR_REPORT_URL__') && single.includes('STASCOPE_REPORT'),
+  'single-file inlines the runtime monitor');
+check(read('site/assets/monitor.js') === monitorSrc, 'site monitor.js is byte-identical to src/monitor.js');
+check(/STASCOPE_REPORT/.test(app) && /chunk-load-failed/.test(app) && /tag-api-error/.test(app),
+  'app reports chunk and tag-API failures to the monitor');
+check(/toastHost/.test(monitorSrc) && /aria-live/.test(monitorSrc) && /unhandledrejection/.test(monitorSrc),
+  'monitor catches errors/rejections and surfaces an accessible toast');
+check(/#toastHost/.test(styles) && /toast--err/.test(styles), 'toast styles are defined');
+check(!/sendBeacon/.test(app), 'the app itself never beacons — only the monitor does');
+
+/* ---- Tier D: i18n scaffold ---- */
+const i18nSrc = read('src/i18n.js');
+check(site.includes('src="assets/i18n.js"') && site.indexOf('assets/i18n.js') < site.indexOf('assets/app.js'),
+  'site loads i18n.js before app.js');
+check(single.includes('STASCOPE_I18N') && single.indexOf('STASCOPE_I18N') < single.indexOf('window.SNAPSHOT ||'),
+  'single-file inlines the i18n layer before the app');
+check(read('site/assets/i18n.js') === i18nSrc, 'site i18n.js is byte-identical to src/i18n.js');
+check(/window\.t\s*=/.test(i18nSrc) && /'en'/.test(i18nSrc) && /starscope-lang/.test(i18nSrc),
+  'i18n ships the t() lookup with a persisted language switch');
+check(/\bt\(/.test(app) && /STASCOPE_I18N/.test(app) && /applyLangChrome/.test(app),
+  'app routes dynamic strings through t() and swaps the chrome on switch');
+check(/id="langToggle"/.test(tpl), 'template ships the language toggle');
 check(single.includes('<style>') && single.includes('id="repo-data"') && single.includes('window.SNAPSHOT ||'),
   'single-file inlines CSS, data and app with dual-source data loader');
 check(read('site/assets/app.js') === app, 'site app.js is byte-identical to src/app.js');
@@ -161,6 +204,33 @@ check(/href="index\.html\?view=total&amp;cat=/.test(catalogue),
   'catalogue deep-links into the interactive tool');
 check(!/__[A-Z_]+__/.test(catalogue), 'catalogue has no unreplaced placeholders');
 check(/^User-agent: \*/m.test(read('site/robots.txt')), 'robots.txt has a valid user-agent rule');
+
+/* ---- Tier D: detail sheet + favourites ---- */
+check(/role="dialog"/.test(tpl) && /aria-modal="true"/.test(tpl) && /id="detailTitle"/.test(tpl),
+  'template ships an accessible detail dialog');
+check(/openDetail/.test(app) && /closeDetail/.test(app) && /detailReturn/.test(app),
+  'detail sheet opens from rows and returns focus on close');
+check(/favBtnHtml/.test(app) && /starscope-favs/.test(app) && /aria-pressed/.test(app),
+  'favourites persist in localStorage behind an aria-pressed toggle');
+check(/id="favToggle"/.test(tpl) && /id="favExport"/.test(tpl) && /id="favClear"/.test(tpl),
+  'favourites chrome (toggle / export / clear) is in the template');
+check(/n30/.test(app), 'net-30-day growth is surfaced when history covers it');
+check(/\.detail__panel/.test(styles) && /\.favbtn/.test(styles), 'detail and favourite styles exist');
+
+/* ---- Tier D: RSS feed ---- */
+const rssPath = path.join(root, 'site', 'rss.xml');
+if (fs.existsSync(rssPath)) {
+  const rss = read('site/rss.xml');
+  check(rss.startsWith('<?xml') && /<rss version="2\.0"/.test(rss) && /<channel>/.test(rss),
+    'rss.xml is a valid RSS 2.0 channel');
+  check((rss.match(/<item>/g) || []).length >= 10,
+    `rss.xml carries a digest of items (got ${(rss.match(/<item>/g) || []).length})`);
+  check(/https:\/\/github\.com\//.test(rss) && /<guid/.test(rss),
+    'rss items deep-link to GitHub repos');
+  check(/<language>zh-CN<\/language>/.test(rss), 'rss declares its language');
+}
+check(!/rel="canonical"/.test(site) || /href="rss\.xml"/.test(site),
+  'site footer exposes the RSS feed whenever canonical is enabled');
 
 console.log(`PASS (${ok.length})`);
 ok.forEach(x => console.log('  ok  ' + x));

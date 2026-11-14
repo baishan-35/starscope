@@ -26,3 +26,6 @@ hosts.backup-*.bak
 # generated site — built and deployed by GitHub Actions, not committed
 site/
 github-explorer.html
+
+# star-count history — persisted via actions/cache in CI, local only
+stars_history.json

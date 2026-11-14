@@ -32,6 +32,18 @@ jobs:
         with:
           node-version: "20"
 
+      # Star-count history persists across runs so trending gains can be
+      # computed as snapshot deltas (stars_now - stars_N_days_ago) instead of
+      # scraped Trending text. First run starts empty and falls back to the
+      # page text; coverage takes over as history accumulates.
+      - name: Restore star-count history
+        uses: actions/cache@v4
+        with:
+          path: stars_history.json
+          key: stars-history-v1-${{ github.run_number }}
+          restore-keys: |
+            stars-history-v1-
+
       - name: Build site (refresh snapshot, strict validation)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -56,6 +56,8 @@ SRC = os.path.join(HERE, "src")
 SITE = os.path.join(HERE, "site")
 OUT_HTML = os.path.join(HERE, "github-explorer.html")
 CACHE = os.path.join(HERE, "repos_cache.json")
+HISTORY = os.path.join(HERE, "stars_history.json")
+HISTORY_MAX_DAYS = 35
 CACHE_VERSION = 5
 BASE_TTL = 7 * 86400
 DYN_TTL = 3 * 3600
@@ -87,38 +89,100 @@ CATS = [
 
 # Keyword rules let trending/new/online rows be filtered by the SAME category
 # tree as the cumulative ranking. Shipped to the client for live API rows.
+# Tier C rework: the engine now matches WORDS, not substrings. Two lists —
+#   w  word/phrase keywords: matched on token boundaries and tolerant of
+#      "-" vs " " separators ("self hosted" also matches "self-hosted")
+#   k  substring keywords: raw substring on name+desc+topics, for stems
+#      ("fine-tun") and CJK terms ("自建")
+# This kills the old class of misclassification where "ai " matched "chai ",
+# "model" matched every data-model, "learning" pulled all ML repos into the
+# 学习资源 category, and "engine" made search engines into games.
 RULES = [
-    {"id": "ai",         "k": ["llm", "gpt", "transformer", "diffusion", "machine-learning",
-                               "deep-learning", "generative", "neural", "pytorch", "huggingface",
-                               "embedding", "inference", "fine-tun", "rag", "ollama", "chatgpt",
-                               "text-to-image", "stable-diffusion", "model", "ai "]},
-    {"id": "agent",      "k": ["agent", "autonomous", "copilot", "mcp", "tool-use", "browser-use",
-                               "workflow-engine", "assistant"]},
-    {"id": "selfhost",   "k": ["self-host", "selfhost", "homelab", "docker-compose", "nas ",
-                               "自建", "自部署", "private-cloud", "single-binary", "self hosted"]},
-    {"id": "devtools",   "k": ["cli", "terminal", "editor", "debugger", "developer-tools", "ide ",
-                               "sdk", "toolkit", "linter", "formatter", "shell", "devtool", "plugin"]},
-    {"id": "frontend",   "k": ["frontend", "react", "vue", "css", "ui ", "component", "tailwind",
-                               "design-system", "browser", "webapp", "svelte", "angular", "chart"]},
-    {"id": "db",         "k": ["database", "sql", "postgres", "redis", "sqlite", "orm ", "storage",
-                               "data-warehouse", "vector-db", "nosql", "query-engine"]},
-    {"id": "devops",     "k": ["kubernetes", "docker", "ci/cd", "deploy", "terraform", "observability",
-                               "cloud-native", "devops", "helm", "monitoring", "container", "k8s"]},
-    {"id": "security",   "k": ["security", "pentest", "vulnerability", "malware", "reverse",
-                               "exploit", "privacy", "scanner", "forensics", "encryption", "ctf"]},
-    {"id": "automation", "k": ["automation", "script", "workflow", "n8n", "zapier", "scraper",
-                               "cron", "rpa", "bot", "no-code", "low-code"]},
-    {"id": "game",       "k": ["game", "engine", "unity", "emulator", "renderer", "graphics",
-                               "ffmpeg", "video", "audio", "media", "3d", "shader"]},
-    {"id": "learn",      "k": ["awesome", "tutorial", "roadmap", "interview", "learning", "course",
-                               "cheat-sheet", "examples", "教程", "学习", "handbook", "guide"]},
+    {"id": "ai", "w": ["ai", "llm", "gpt", "rag", "mcp", "transformer", "diffusion",
+                       "pytorch", "huggingface", "hugging face", "embedding", "inference",
+                       "ollama", "openai", "anthropic", "llama", "mistral", "deepseek",
+                       "machine learning", "deep learning", "generative ai",
+                       "text to image", "text to speech", "stable diffusion",
+                       "large language model", "vision language model", "vllm"],
+     "k": ["fine-tun", "neural", "chatgpt", "generative", "机器学习", "大模型"]},
+    {"id": "agent", "w": ["agent", "agents", "agentic", "autonomous", "copilot",
+                          "assistant", "tool use", "browser use", "workflow engine"],
+     "k": ["ai-agent", "ai agent", "智能体"]},
+    {"id": "selfhost", "w": ["selfhost", "self hosted", "homelab", "nas",
+                             "private cloud", "single binary", "docker compose",
+                             "docker-compose"],
+     "k": ["self-host", "self host", "自建", "自部署", "私有化部署"]},
+    {"id": "devtools", "w": ["cli", "tui", "terminal", "editor", "debugger", "ide",
+                             "sdk", "shell", "devtool", "linter", "formatter",
+                             "plugin", "developer tools", "toolkit",
+                             "command line", "commandline", "commandline tool"],
+     "k": ["dev-tool", "dev tool"]},
+    {"id": "frontend", "w": ["frontend", "front end", "react", "vue", "svelte",
+                             "angular", "tailwind", "css", "ui", "webapp",
+                             "web app", "chart", "charts", "component",
+                             "component library", "design system", "webgl",
+                             "webgpu"],
+     "k": []},
+    {"id": "db", "w": ["sql", "postgres", "postgresql", "mysql", "redis", "sqlite",
+                       "nosql", "database", "orm", "storage", "query engine",
+                       "data warehouse", "vector database", "vector db",
+                       "clickhouse", "duckdb", "mongodb", "opensearch"],
+     "k": ["vector-db", "data-lake", "数据库"]},
+    {"id": "devops", "w": ["kubernetes", "docker", "terraform", "helm", "devops",
+                           "observability", "cloud native", "monitoring",
+                           "container", "k8s", "deployment", "infrastructure as code",
+                           "gitops", "serverless", "k3s"],
+     "k": ["ci/cd", "云原生"]},
+    {"id": "security", "w": ["security", "pentest", "exploit", "scanner",
+                             "forensics", "ctf", "malware", "privacy",
+                             "encryption", "cryptography", "vulnerability",
+                             "reverse engineering", "osint", "red team",
+                             "漏洞", "安全"],
+     "k": ["vulnerab", "逆向"]},
+    {"id": "automation", "w": ["automation", "workflow", "cron", "rpa", "bot",
+                               "scraper", "scraping", "n8n", "zapier",
+                               "no code", "low code", "productivity"],
+     "k": ["自动化"]},
+    {"id": "game", "w": ["game", "games", "gaming", "unity", "godot", "unreal",
+                         "bevy", "emulator", "renderer", "rendering",
+                         "graphics", "shader", "ffmpeg", "video", "audio",
+                         "multimedia", "3d", "game engine", "voxel"],
+     "k": ["多媒体"]},
+    {"id": "learn", "w": ["awesome", "tutorial", "tutorials", "roadmap",
+                          "interview", "course", "courses", "handbook",
+                          "guide", "guides", "cheatsheet", "cheat sheet",
+                          "curriculum", "study"],
+     "k": ["cheat-sheet", "教程", "学习"]},
 ]
+
+# Tokenizer shared by the word-boundary matcher (mirrored in src/app.js).
+_SEP_RE = re.compile(r"[^a-z0-9\u4e00-\u9fff]+")
+
+
+def _tokens(text):
+    return " " + _SEP_RE.sub(" ", (text or "").lower()).strip() + " "
+
+
+def classify(rec):
+    """Token-aware category matching. Must stay in sync with src/app.js."""
+    raw = ((rec.get("n") or "") + " " + (rec.get("d") or "") + " "
+           + " ".join(rec.get("t") or [])).lower()
+    hay = _tokens(raw)
+    out = []
+    for rule in RULES:
+        if any(k in raw for k in rule.get("k", [])):
+            out.append(rule["id"])
+            continue
+        if any(_tokens(k) in hay for k in rule.get("w", [])):
+            out.append(rule["id"])
+    return out
 
 PERIODS = [
     {"id": "daily",   "name": "今日涨势", "label": "今日"},
     {"id": "weekly",  "name": "本周涨势", "label": "本周"},
     {"id": "monthly", "name": "本月涨势", "label": "本月"},
 ]
+PERIOD_DAYS = {"daily": 1, "weekly": 7, "monthly": 30}
 WINDOWS = [
     {"id": "90d",  "name": "近 90 天新建", "days": 90,  "minStars": 300},
     {"id": "365d", "name": "近 1 年新建",  "days": 365, "minStars": 1000},
@@ -280,12 +344,6 @@ def graphql_enrich(names):
     return out
 
 
-def classify(rec):
-    hay = ((rec.get("n") or "") + " " + (rec.get("d") or "") + " "
-           + " ".join(rec.get("t") or [])).lower()
-    return [r["id"] for r in RULES if any(k in hay for k in r["k"])]
-
-
 def normalize(item):
     return {
         "n": item.get("full_name") or "",
@@ -440,10 +498,90 @@ def load_cache():
     return {"v": CACHE_VERSION, "base_ts": 0, "dyn_ts": 0, "base": [], "trending": {}, "newstars": {}}
 
 
+# ---- star-count history: snapshot deltas instead of scraped text ----
+# Every build records (timestamp, stars) per known repo. Trending gains are
+# then computed as stars_now - stars_N_days_ago whenever history covers the
+# window, which is reproducible and immune to GitHub Trending's markup. The
+# scraped "N stars today" text stays as a fallback for repos with no history.
+# The history file persists locally and, in CI, via an actions/cache entry,
+# so the delta path takes over as snapshots accumulate.
+
+def load_history():
+    try:
+        with open(HISTORY, encoding="utf-8") as fh:
+            h = json.load(fh)
+        if isinstance(h.get("repos"), dict):
+            return h
+    except Exception:
+        pass
+    return {"v": 1, "repos": {}}
+
+
+def _point_at_least_days_old(pts, days, tolerance_days):
+    """Newest history point that is at least `days` old (within tolerance)."""
+    target = time.time() - days * 86400
+    best = None
+    for ts, stars in pts:
+        if ts <= target and (best is None or ts > best[0]):
+            best = [ts, stars]
+    if best is None or best[0] < target - tolerance_days * 86400:
+        return None
+    return best
+
+
+def delta_gain(history, name, stars, days):
+    """stars_now - stars_N_days_ago, or None if history doesn't cover it."""
+    pts = (history.get("repos") or {}).get(name) or []
+    if not pts or not stars:
+        return None
+    tolerance = max(1.5, days * 0.5)
+    point = _point_at_least_days_old(pts, days, tolerance)
+    if not point:
+        return None
+    return max(0, stars - point[1])
+
+
+def net_growth(history, name, stars, days):
+    """Same as delta_gain but reported as a signed net change."""
+    pts = (history.get("repos") or {}).get(name) or []
+    if not pts or not stars:
+        return None
+    tolerance = max(2.0, days * 0.4)
+    point = _point_at_least_days_old(pts, days, tolerance)
+    if not point:
+        return None
+    return stars - point[1]
+
+
+def record_history(history, base, trending, newstars, now_ts):
+    repos = history.setdefault("repos", {})
+
+    def add(name, stars):
+        if not name or not stars:
+            return
+        pts = repos.setdefault(name, [])
+        if pts and now_ts - pts[-1][0] < 20 * 3600:
+            pts[-1] = [now_ts, stars]      # refresh today's sample
+        else:
+            pts.append([now_ts, stars])
+        cutoff = now_ts - HISTORY_MAX_DAYS * 86400
+        if len(pts) > 40:
+            del pts[:-40]
+        repos[name] = [p for p in pts if p[0] >= cutoff]
+
+    for r in base:
+        add(r["n"], r.get("s") or 0)
+    for rows in list(trending.values()) + list(newstars.values()):
+        for r in rows:
+            add(r["n"], r.get("s") or 0)
+    history["v"] = 1
+    return history
+
+
 def main():
     print("proxy: %s | token: %s | curl: %s | ci: %s" % (
         PROXY or "direct", "yes" if TOKEN else "no", CURL, CI), flush=True)
-    for f in ("index.template.html", "tokens.css", "app.css", "app.js", "favicon.svg"):
+    for f in ("index.template.html", "tokens.css", "app.css", "app.js", "monitor.js", "i18n.js", "favicon.svg"):
         if not os.path.exists(os.path.join(SRC, f)):
             raise SystemExit("Missing source file: src/" + f)
 
@@ -489,6 +627,36 @@ def main():
     with open(CACHE, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(cache, fh, ensure_ascii=False)
 
+    # ---- Tier C: snapshot-delta gains (history-backed, reproducible) ----
+    history = load_history()
+    gain_src = {}
+    for period in PERIODS:
+        days = PERIOD_DAYS[period["id"]]
+        rows = trending.get(period["id"], [])
+        n_delta = 0
+        for rec in rows:
+            g = delta_gain(history, rec["n"], rec.get("s") or 0, days)
+            if g is not None and g > 0:
+                rec["gain"] = g
+                rec["ratio"] = round(g / (rec.get("s") or 1) * 100, 1)
+                rec["gsrc"] = "delta"
+                n_delta += 1
+            else:
+                rec["gsrc"] = "page"
+        gain_src[period["id"]] = {"delta": n_delta, "page": len(rows) - n_delta}
+    # 30-day net growth where history already covers it (fills in over time).
+    for r in base:
+        g = net_growth(history, r["n"], r.get("s") or 0, 30)
+        if g is not None:
+            r["n30"] = g
+
+    record_history(history, base, trending, newstars, now_ts)
+    with open(HISTORY, "w", encoding="utf-8", newline="\n") as fh:
+        json.dump(history, fh, ensure_ascii=False, separators=(",", ":"))
+    print("  gain source: %s | history repos: %d" % (
+        " ".join("%s=%dΔ/%dpg" % (p, gain_src[p]["delta"], gain_src[p]["page"]) for p in gain_src),
+        len(history.get("repos") or {})), flush=True)
+
     topics = build_topics(base, trending, newstars)
     all_names = {r["n"] for r in base}
     for rows in list(trending.values()) + list(newstars.values()):
@@ -510,6 +678,7 @@ def main():
             "unique": len(all_names),
             "rising": {p["id"]: len(trending.get(p["id"], [])) for p in PERIODS},
             "newstars": {w["id"]: len(newstars.get(w["id"], [])) for w in WINDOWS},
+            "gainSource": gain_src,
         },
     }
     # ---- shard the heavy arrays for progressive / on-demand loading ----
@@ -523,7 +692,15 @@ def main():
     CHUNK = 250
 
     def slim(rec):
-        return {k: v for k, v in rec.items() if k not in ('u', 'cats')}
+        # Strip the URL (derivable from n). Categories ship as a compact
+        # space-joined string 'ct' instead of a JSON array — same information,
+        # roughly half the bytes, and the sidebar/filter stay exact without
+        # re-running the classifier client-side for catalogue rows.
+        out = {k: v for k, v in rec.items() if k not in ('u', 'cats')}
+        cats = rec.get('cats') or []
+        if cats:
+            out['ct'] = ' '.join(cats)
+        return out
 
     def slim_list(arr):
         return [slim(r) for r in arr]
@@ -577,8 +754,17 @@ def main():
     tokens = read_src("tokens.css")
     css = tokens + "\n\n" + read_src("app.css")
     js = read_src("app.js")
+    monitor = read_src("monitor.js")
+    i18n = read_src("i18n.js")
     favicon = read_src("favicon.svg")
     fav_data = "data:image/svg+xml," + quote(favicon, safe="")
+
+    # Runtime monitor: shipped linked on the site, inlined in the single file.
+    # __ERROR_REPORT_URL__ stays empty by default so the strict CSP is untouched;
+    # set it (same-origin Worker) to start collecting errors.
+    monitor_cfg = '<script>window.__ERROR_REPORT_URL__="";</script>'
+    site_monitor = monitor_cfg + '<script src="assets/monitor.js"></script>'
+    single_monitor = monitor_cfg + "<script>\n" + monitor + "\n</script>"
 
     def esc(value):
         return html_lib.escape(str(value if value is not None else ""), quote=True)
@@ -697,12 +883,54 @@ __ROWS__
                     .replace("__ROWS__", body_rows)
                     .replace("__CATS__", cat_links))
 
-    def fill(style_block, data_block, app_block, icon_block, seo):
+    def build_rss(trending, generated):
+        """Weekly-gain digest feed. RSS items need absolute links, so this is
+        only emitted for a configured public origin (same rule as sitemap)."""
+        if not SITE_URL:
+            return ""
+        def xesc(s):
+            return (str(s or "").replace("&", "&amp;").replace("<", "&lt;")
+                    .replace(">", "&gt;").replace('"', "&quot;"))
+        pub_str = datetime.now(timezone(timedelta(hours=8))).strftime(
+            "%a, %d %b %Y %H:%M:%S +0800")
+        items = []
+        for rec in sorted(trending.get("weekly", []),
+                          key=lambda r: -r["gain"])[:30]:
+            link = "https://github.com/" + rec["n"]
+            title = "%s（本周 +%%d 星）" % rec["n"] % (rec.get("gain") or 0)
+            desc = "%s — ★ %s · 本周 +%d · 涨幅 %s%%" % (
+                rec.get("d") or "（无简介）", format(rec.get("s") or 0, ","),
+                rec.get("gain") or 0, rec.get("ratio") or 0)
+            items += [
+                "    <item>",
+                "      <title>%s</title>" % xesc(title),
+                "      <link>%s</link>" % xesc(link),
+                '      <guid isPermaLink="true">%s</guid>' % xesc(link),
+                "      <description>%s</description>" % xesc(desc),
+                "      <pubDate>%s</pubDate>" % pub_str,
+                "    </item>",
+            ]
+        return "\n".join([
+            '<?xml version="1.0" encoding="UTF-8"?>',
+            '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">',
+            "  <channel>",
+            "    <title>Starscope · 每周涨势精选</title>",
+            "    <link>%s/</link>" % xesc(SITE_URL),
+            "    <description>%s</description>" % xesc(SEO_DESC),
+            "    <language>zh-CN</language>",
+            "    <ttl>360</ttl>",
+            "    <lastBuildDate>%s</lastBuildDate>" % pub_str,
+            '    <atom:link href="%s/rss.xml" rel="self" type="application/rss+xml"/>' % xesc(SITE_URL),
+        ] + items + ["  </channel>", "</rss>"]) + "\n"
+
+    def fill(style_block, data_block, app_block, icon_block, seo, monitor_block, rss_link=""):
         return (tpl.replace("__STYLE_BLOCK__", style_block)
                    .replace("__DATA_BLOCK__", data_block)
                    .replace("__APP_SCRIPT__", app_block)
                    .replace("__FAVICON_BLOCK__", icon_block)
                    .replace("__SEO_BLOCK__", seo)
+                   .replace("__MONITOR_BLOCK__", monitor_block)
+                   .replace("__RSS_LINK__", rss_link)
                    .replace("__TIME__", now))
 
     # 1) Standalone tool site: linked assets, works over http and file:// alike.
@@ -712,19 +940,32 @@ __ROWS__
     # rewriting) and never injects its own default theme.
     with open(os.path.join(SITE, ".nojekyll"), "w", encoding="utf-8") as fh:
         fh.write("")
+    rss_link = ('<li><a href="rss.xml" target="_blank" rel="noopener">RSS 订阅 · 每周涨势精选</a></li>'
+                if SITE_URL else "")
     site_index = fill(
         '<link rel="stylesheet" href="assets/app.css">',
         '<script src="data/snapshot.js"></script>'
         '<script src="data/momentum.js"></script>'
         '<script src="data/repos-0.js"></script>',
+        '<script src="assets/i18n.js"></script>'
         '<script src="assets/app.js"></script>',
         '<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">',
         seo_meta(True),
+        site_monitor,
+        rss_link,
     )
     with open(os.path.join(SITE, "index.html"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(site_index)
     with open(os.path.join(SITE, "catalogue.html"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(build_catalogue(base, payload["cats"], now))
+    rss_xml = build_rss(trending, now)
+    if rss_xml:
+        with open(os.path.join(SITE, "rss.xml"), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write(rss_xml)
+    else:
+        stale = os.path.join(SITE, "rss.xml")
+        if os.path.exists(stale):
+            os.remove(stale)   # never ship an rss pointing at a stale origin
     robots = "User-agent: *\nAllow: /\n"
     if SITE_URL:
         robots += "Sitemap: %s/sitemap.xml\n" % SITE_URL
@@ -751,6 +992,10 @@ __ROWS__
         fh.write(css)
     with open(os.path.join(SITE, "assets", "app.js"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(js)
+    with open(os.path.join(SITE, "assets", "monitor.js"), "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(monitor)
+    with open(os.path.join(SITE, "assets", "i18n.js"), "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(i18n)
     with open(os.path.join(SITE, "assets", "favicon.svg"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(favicon)
     with open(os.path.join(SITE, "data", "snapshot.js"), "w", encoding="utf-8", newline="\n") as fh:
@@ -797,9 +1042,10 @@ __ROWS__
     out = fill(
         "<style>\n" + css + "\n</style>",
         '<script id="repo-data" type="application/json">' + data_json + "</script>",
-        "<script>\n" + js + "\n</script>",
+        "<script>\n" + i18n + "\n</script>\n<script>\n" + js + "\n</script>",
         '<link rel="icon" type="image/svg+xml" href="' + fav_data + '">',
         seo_meta(False),
+        single_monitor,
     )
     with open(OUT_HTML, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(out)

@@ -38,8 +38,27 @@ window.addEventListener('load',function(){setTimeout(function(){
   res.legal=!!d.getElementById('legal');
   res.coverage=/快照收录/.test(d.getElementById('resultInfo').textContent);
   res.loadmoreHidden=d.getElementById('loadmore').hidden;
+  res.toastHost=!!d.getElementById('toastHost');
+  res.errCount=(window.__STASCOPE_ERRORS__||[]).length;
   d.getElementById('loadmoreBtn').click();
   res.afterLoad=n('#list .repo');
+  var firstRepo=d.querySelector('#list .repo');
+  if(firstRepo){
+    firstRepo.click();
+    res.detailOpen=!d.getElementById('detail').hidden;
+    res.detailDialog=d.querySelectorAll('#detail [role="dialog"][aria-modal="true"]').length;
+    res.detailTitle=(d.getElementById('detailTitle')||{}).textContent||'';
+    res.detailLinks=n('#detailBody a[href^="https://github.com/"]');
+    var dbtn=d.getElementById('detailClose'); if(dbtn) dbtn.click();
+    res.detailClosed=d.getElementById('detail').hidden;
+    var favBtn=firstRepo.querySelector('[data-fav]');
+    if(favBtn){
+      favBtn.click();
+      res.favPressed=favBtn.getAttribute('aria-pressed');
+      try{ res.favCount=(JSON.parse(localStorage.getItem('starscope-favs')||'[]')||[]).length; }catch(e){ res.favCount=0; }
+      res.favToggleShown=!d.getElementById('favToggle').hidden;
+    }
+  }
   d.querySelector('#tabs [data-view="rising"]').click();
   res.afterRising={rows:n('#list .repo'),cats:n('#rail [data-cat]'),selected:d.querySelector('#tabs [aria-selected="true"]').getAttribute('data-view')};
   d.querySelector('#tabs [data-view="tags"]').click();
@@ -48,6 +67,13 @@ window.addEventListener('load',function(){setTimeout(function(){
   setTimeout(function(){
     res.filterChips=n('#filterbar .filter-chip');
     res.errs=window.__errs||[];
+    var lt=d.getElementById('langToggle');
+    if(lt){
+      lt.click();
+      res.langAfter=d.documentElement.lang;
+      var tabEl=d.querySelector('#tabs [data-view="total"]');
+      res.tabAfter=(tabEl&&tabEl.textContent)||'';
+    }
     var p=d.createElement('pre');p.id='wbprobe';p.textContent=JSON.stringify(res);d.body.appendChild(p);
   },260);
 },300)});
@@ -120,9 +146,20 @@ for (const c of configs) {
   check(r.theme === (c.light ? 'light' : 'dark'), p(`theme = ${c.light ? 'light' : 'dark'} (got ${r.theme})`));
   check(r.afterRising.rows >= 60 && r.afterRising.cats === 12 && r.afterRising.selected === 'rising',
     p('rising view keeps a full page + full category tree'));
+  check(r.detailOpen === true && r.detailClosed === true, p('detail dialog opens on row click and closes'));
+  check(r.detailDialog === 1, p('detail is a single aria-modal dialog'));
+  check(!!r.detailTitle && r.detailTitle.indexOf('/') > 0,
+    p(`detail dialog is labelled with the repo name (got ${r.detailTitle || 'none'})`));
+  check(r.detailLinks >= 1, p('detail body links out to GitHub'));
+  check(r.favPressed === 'true' && r.favCount === 1, p('favourite toggle flips aria-pressed and persists'));
+  check(r.favToggleShown === true, p('favourites toggle is visible in the summary bar'));
+  check(r.langAfter === 'en' && /Catalogue/.test(r.tabAfter),
+    p(`language toggle switches the chrome to English (lang=${r.langAfter}, tab="${String(r.tabAfter).slice(0, 24)}")`));
   check(r.afterTags.cats === 12 && r.afterTags.tagHidden === false,
     p('tag view keeps category tree and reveals tag panel'));
   check(r.errs.length === 0, p(`no runtime errors${r.errs.length ? ' — ' + r.errs.join('; ') : ''}`));
+  check(r.toastHost === false, p('no error toast on a clean load'));
+  check(r.errCount === 0, p(`monitor recorded no events on a clean load${r.errCount ? ' — got ' + r.errCount : ''}`));
   if (c.w >= 1280) check(r.toolbarRows === 1, p(`toolbar fits one row (got ${r.toolbarRows})`));
   if (c.light) {
     const bg = (r.bodyBg.match(/\d+/g) || []).map(Number);

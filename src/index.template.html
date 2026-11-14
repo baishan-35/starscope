@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+__MONITOR_BLOCK__
 <title>Starscope · GitHub 项目雷达</title>
 <meta name="description" content="按分类与标签浏览 GitHub 项目，已收录项目按星标与增量从高到低完整列出，顺着标签发现目录之外的工具。">
 <meta name="color-scheme" content="dark light">
@@ -31,6 +32,7 @@ __STYLE_BLOCK__
     </nav>
     <div class="nav__actions">
       <span class="status-pill" title="数据快照时间"><i class="status-pill__dot" aria-hidden="true"></i><span id="snapshotStatus">读取中</span></span>
+      <button class="btn btn--ghost btn--icon" id="langToggle" type="button" aria-label="切换语言 / Switch language" title="切换语言 / Switch language">EN</button>
       <button class="btn btn--ghost btn--icon" id="themeToggle" type="button" aria-label="切换明暗主题" title="切换明暗主题">◐</button>
       <button class="btn btn--primary btn--sm" id="navTags" type="button">标签探索</button>
       <button class="nav__toggle" id="navToggle" type="button" aria-label="打开菜单" aria-expanded="false" aria-controls="navMenu">☰</button>
@@ -145,7 +147,7 @@ __STYLE_BLOCK__
 
           <div class="summary">
             <span id="resultInfo" role="status"></span>
-            <span class="summary__right"><span class="online-msg" id="onlineMsg"></span><button class="linkbtn" id="findMore" type="button">没找到？用标签探索 →</button></span>
+            <span class="summary__right"><span class="online-msg" id="onlineMsg"></span><button class="linkbtn" id="favToggle" type="button" hidden>只看收藏</button><button class="linkbtn" id="favExport" type="button" hidden>复制收藏列表</button><button class="linkbtn" id="favClear" type="button" hidden>清空收藏</button><button class="linkbtn" id="findMore" type="button">没找到？用标签探索 →</button></span>
           </div>
           <div class="list" id="list" role="tabpanel" aria-labelledby="exploreTitle"></div>
           <div class="loadmore" id="loadmore" hidden>
@@ -169,7 +171,7 @@ __STYLE_BLOCK__
       </div>
       <div class="grid-auto">
         <article class="card"><p class="card__index">01 / STOCK</p><h3>累计星标</h3><p>按分类从 GitHub Search API 取回项目，每类最多 200 条，按星标从高到低完整列出，不做榜单式截断。适合找成熟、可长期依赖的基础设施，代价是老项目有先发优势。</p></article>
-        <article class="card"><p class="card__index">02 / FLOW</p><h3>窗口增量</h3><p>合并 16 张 GitHub Trending 页面，保留日 / 周 / 月全部带真实增量的项目并按新增星标降序完整列出。「涨幅 = 新增 ÷ 总量」让小基数高增长浮上来。</p></article>
+        <article class="card"><p class="card__index">02 / FLOW</p><h3>窗口增量</h3><p>合并 16 张 GitHub Trending 页面，保留日 / 周 / 月全部带真实增量的项目并按新增星标降序完整列出。增量数字优先取自本站快照差分（可复现），无历史时回退 Trending 页面数字。「涨幅 = 新增 ÷ 总量」让小基数高增长浮上来。</p></article>
         <article class="card"><p class="card__index">03 / GRAPH</p><h3>标签扩散</h3><p>从任意项目的 topic 出发，实时查询该标签下的其他仓库，再顺着「相关标签」继续挖，把快照之外的项目也纳入结果。</p></article>
       </div>
       <p class="caveat"><strong>「全部」的边界：</strong>这里完整列出的是本站已收录的项目（<span id="caveatCount">—</span> 个），不是 GitHub 全量仓库——官方单次搜索最多返回 1000 条结果，快照也是定时抓取的。涨势数据仍只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今平均值，不是近 30 天净增长。</p>
@@ -197,10 +199,22 @@ __STYLE_BLOCK__
         <article class="card"><p class="card__index">01 / NOTICE</p><h3>非官方、非隶属</h3><p>Starscope 是独立第三方工具，与 GitHub, Inc. 无隶属、授权或背书关系。GitHub 是 GitHub, Inc. 的商标，项目名称与描述归各自所有者。本站依据 GitHub 的<a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service" target="_blank" rel="noopener">服务条款</a>、<a href="https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies" target="_blank" rel="noopener">可接受使用政策</a>与<a href="https://github.com/logos" target="_blank" rel="noopener">品牌使用说明</a>使用公开数据；上述条款核验于 2026-11-14，以官方最新文本为准。</p></article>
         <article class="card"><p class="card__index">02 / SOURCE</p><h3>数据来源与覆盖</h3><p id="legalCoverage">累计与新星数据来自 GitHub Search API，涨势数据来自 GitHub Trending 页面的日 / 周 / 月新增星标。快照 __TIME__（北京时间）自动生成。每类最多收录 200 条，官方单次查询上限 1000 条结果。</p></article>
         <article class="card"><p class="card__index">03 / PRIVACY</p><h3>隐私与凭据</h3><p>本站无账号体系、无服务端日志、无第三方统计与广告；仅在浏览器本地保存主题偏好。标签探索由浏览器直接向 GitHub 公开 API 发起匿名请求，不收集、不传输任何访问凭据。匿名额度约 10 次/分钟，超限稍后重试即可。</p></article>
-        <article class="card"><p class="card__index">04 / LIMITS</p><h3>准确性与局限</h3><p>涨势数据只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今的平均值，不是近 30 天净增长。所有数字以 GitHub 实时页面为准，本站不对数据的完整性或时效性作保证。</p></article>
+        <article class="card"><p class="card__index">04 / LIMITS</p><h3>准确性与局限</h3><p>涨势数据只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今的平均值。「近 30 天净增长」依赖本站逐日快照历史，会随运行时间逐步精确。所有数字以 GitHub 实时页面为准，本站不对数据的完整性或时效性作保证。</p></article>
       </div>
     </div>
   </section>
+
+  <!-- 7. DETAIL OVERLAY (project side sheet) -->
+  <div class="detail" id="detail" hidden>
+    <div class="detail__backdrop" id="detailBackdrop"></div>
+    <aside class="detail__panel" role="dialog" aria-modal="true" aria-labelledby="detailTitle">
+      <div class="detail__head">
+        <h3 class="detail__title" id="detailTitle">项目详情</h3>
+        <button class="btn btn--ghost btn--icon" id="detailClose" type="button" aria-label="关闭详情（Esc）" title="关闭详情（Esc）">×</button>
+      </div>
+      <div class="detail__body" id="detailBody" tabindex="-1"></div>
+    </aside>
+  </div>
 </main>
 
 <footer class="site-footer" id="about">
@@ -220,7 +234,7 @@ __STYLE_BLOCK__
       </div>
       <div>
         <h4>关于</h4>
-        <ul><li><a href="#legal">数据来源与声明</a></li><li><a href="#method">指标口径与局限</a></li><li>快照 __TIME__ 自动生成</li></ul>
+        <ul><li><a href="#legal">数据来源与声明</a></li><li><a href="#method">指标口径与局限</a></li>__RSS_LINK__<li>快照 __TIME__ 自动生成</li></ul>
       </div>
     </div>
     <div class="footer-legal">
