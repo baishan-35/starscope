@@ -28,12 +28,16 @@ jobs:
         with:
           python-version: "3.11"
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
       - name: Build site (refresh snapshot, strict validation)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Public origin for canonical / og:url / sitemap. Set repo
           # Settings > Variables > SITE_URL to your Cloudflare Pages URL or
-          # custom domain, e.g. https://starscope.pages.dev (no trailing slash).
+          # custom domain, e.g. https://starscope-adb.pages.dev (no trailing slash).
           SITE_URL: ${{ vars.SITE_URL }}
           CI: "true"
         run: python build_github_explorer.py --force --ci
@@ -45,10 +49,8 @@ jobs:
           node tests/contrast.js
 
       - name: Publish to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          projectName: starscope
-          directory: site
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
+          command: pages deploy site --project-name=starscope --branch=main --commit-dirty=true
