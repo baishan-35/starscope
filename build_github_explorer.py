@@ -512,7 +512,62 @@ def main():
             "newstars": {w["id"]: len(newstars.get(w["id"], [])) for w in WINDOWS},
         },
     }
-    data_json = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+    # ---- shard the heavy arrays for progressive / on-demand loading ----
+    # The cumulative catalogue (repos) is the bulk of the payload. We split it
+    # into chunks so the first screen only downloads/parses the head, and the
+    # rest streams in as the user scrolls. Momentum (trending/newstars) is
+    # small enough to ship with the first screen but kept in its own file so it
+    # can be cached independently. Redundant fields (u, cats) are stripped: the
+    # URL is derivable from the full_name and categories are re-derived
+    # client-side from the shipped RULES, so nothing is lost.
+    CHUNK = 250
+
+    def slim(rec):
+        return {k: v for k, v in rec.items() if k not in ('u', 'cats')}
+
+    def slim_list(arr):
+        return [slim(r) for r in arr]
+
+    # Classification counts + total, so the sidebar tree is exact without
+    # having to load every chunk first.
+    idx_counts = {}
+    for r in base:
+        for cid in (r.get('cats') or []):
+            idx_counts[cid] = idx_counts.get(cid, 0) + 1
+    # Distinct languages across every lens, so the language filter is complete.
+    lang_set = set()
+    for rec in base:
+        if rec.get('l'):
+            lang_set.add(rec['l'])
+    for rows in list(trending.values()) + list(newstars.values()):
+        for rec in rows:
+            if rec.get('l'):
+                lang_set.add(rec['l'])
+    langs = sorted(lang_set)
+    meta_payload = {
+        "generated": now,
+        "cats": [{"id": c["id"], "name": c["name"], "q": c["q"]} for c in CATS],
+        "rules": RULES,
+        "periods": PERIODS,
+        "windows": [{"id": w["id"], "name": w["name"]} for w in WINDOWS],
+        "coverage": payload["coverage"],
+        "topics": topics,
+        "idx": {"counts": idx_counts, "total": len(base)},
+        "langs": langs,
+    }
+    momentum_payload = {
+        "trending": {p: slim_list(v) for p, v in trending.items()},
+        "newstars": {w: slim_list(v) for w, v in newstars.items()},
+    }
+    repo_chunks = [slim_list(base[i:i + CHUNK]) for i in range(0, len(base), CHUNK)]
+    # Single-file build keeps the full payload inline (offline, no chunk fetch).
+    full_slim = dict(payload)
+    full_slim["repos"] = slim_list(base)
+    full_slim["trending"] = momentum_payload["trending"]
+    full_slim["newstars"] = momentum_payload["newstars"]
+    full_slim["idx"] = meta_payload["idx"]
+    full_slim["langs"] = langs
+    data_json = json.dumps(full_slim, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
 
     def read_src(name):
         with open(os.path.join(SRC, name), encoding="utf-8") as fh:
@@ -659,7 +714,9 @@ __ROWS__
         fh.write("")
     site_index = fill(
         '<link rel="stylesheet" href="assets/app.css">',
-        '<script src="data/snapshot.js"></script>',
+        '<script src="data/snapshot.js"></script>'
+        '<script src="data/momentum.js"></script>'
+        '<script src="data/repos-0.js"></script>',
         '<script src="assets/app.js"></script>',
         '<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">',
         seo_meta(True),
@@ -697,7 +754,18 @@ __ROWS__
     with open(os.path.join(SITE, "assets", "favicon.svg"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(favicon)
     with open(os.path.join(SITE, "data", "snapshot.js"), "w", encoding="utf-8", newline="\n") as fh:
-        fh.write("window.SNAPSHOT = " + data_json + ";\n")
+        fh.write("window.SNAPSHOT = "
+                 + json.dumps(meta_payload, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+                 + ";\n")
+    with open(os.path.join(SITE, "data", "momentum.js"), "w", encoding="utf-8", newline="\n") as fh:
+        fh.write("window.SNAPSHOT_MOMENTUM = "
+                 + json.dumps(momentum_payload, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+                 + ";\n")
+    for i, chunk in enumerate(repo_chunks):
+        with open(os.path.join(SITE, "data", "repos-%d.js" % i), "w", encoding="utf-8", newline="\n") as fh:
+            fh.write("window.REPOS_CHUNKS=window.REPOS_CHUNKS||[];window.REPOS_CHUNKS[%d]=" % i
+                     + json.dumps(chunk, ensure_ascii=False, separators=(",", ":")).replace("<", "\\u003c")
+                     + ";\n")
 
     # Cloudflare Pages response headers: a security CSP plus long-cache for the
     # static assets. Harmless on GitHub Pages (it is ignored there). The CSP is
@@ -738,6 +806,7 @@ __ROWS__
 
     print("\nBuilt:", flush=True)
     print("  site/index.html + catalogue.html + assets/ + data/  (standalone tool site)", flush=True)
+    print("    snapshot.js(meta) + momentum.js + repos-*.js (%d chunks x %d)" % (len(repo_chunks), CHUNK), flush=True)
     print("  canonical/sitemap: %s" % (SITE_URL or "disabled (set SITE_URL to enable)"), flush=True)
     print("  github-explorer.html                (single file, %.1f KB)" % (len(out.encode("utf-8")) / 1024), flush=True)
     print("  cumulative %d | rising %s | new %s | topics %d" % (

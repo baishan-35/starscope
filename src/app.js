@@ -2,6 +2,20 @@
  * an inlined single-file page. Data comes from window.SNAPSHOT (site build)
  * or the #repo-data JSON script (single-file build). */
 const DATA = window.SNAPSHOT || JSON.parse(document.getElementById('repo-data').textContent);
+/* Progressive loading: the cumulative catalogue is sharded into data/repos-N.js
+ * chunks. The first chunk is linked synchronously in the page; further chunks
+ * stream in on scroll / "show all". The single-file build inlines the full
+ * payload and never sets window.REPOS_CHUNKS, so it stays in classic mode.
+ * Momentum (trending/newstars) ships in its own momentum.js, also linked up
+ * front, so switching to those views is instant. */
+const SHARDED = !!window.REPOS_CHUNKS;
+if (SHARDED) {
+  DATA.repos = (window.REPOS_CHUNKS || []).filter(Boolean).flat();
+  if (window.SNAPSHOT_MOMENTUM) {
+    DATA.trending = window.SNAPSHOT_MOMENTUM.trending || {};
+    DATA.newstars = window.SNAPSHOT_MOMENTUM.newstars || {};
+  }
+}
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num = n => n >= 1000 ? (n/1000).toFixed(1).replace(/\.0$/,'') + 'k' : String(n);
@@ -50,7 +64,7 @@ function allRows(){
   Object.values(DATA.newstars||{}).forEach(push);
   return [...map.values()];
 }
-const ALLROWS = allRows();
+let ALLROWS = allRows();
 
 function classify(r){
   const hay = ((r.n||'')+' '+(r.d||'')+' '+(r.t||[]).join(' ')).toLowerCase();
@@ -58,6 +72,39 @@ function classify(r){
 }
 function catsOf(r){ return (r.cats && r.cats.length) ? r.cats : classify(r); }
 function catName(id){ const c = DATA.cats.find(x => x.id === id); return c ? c.name : id; }
+
+/* ---------- progressive chunk loading (sharded builds only) ---------- */
+const CHUNK_SIZE = 250;
+function loadedChunkCount(){ return (window.REPOS_CHUNKS || []).filter(Boolean).length; }
+function ensureChunk(i){
+  return new Promise(resolve => {
+    if (!SHARDED || i < loadedChunkCount()){ resolve(); return; }
+    const s = document.createElement('script');
+    s.src = 'data/repos-' + i + '.js';
+    s.onload = () => {
+      DATA.repos = (window.REPOS_CHUNKS || []).filter(Boolean).flat();
+      ALLROWS = allRows();
+      resolve();
+    };
+    s.onerror = () => { console.warn('Starscope: chunk load failed', i); resolve(); };
+    document.head.appendChild(s);
+  });
+}
+async function ensureReposThrough(index){
+  if (!SHARDED) return;
+  const need = Math.floor(index / CHUNK_SIZE) + 1;
+  for (let i = loadedChunkCount(); i < need; i++) await ensureChunk(i);
+}
+async function ensureAllChunks(){
+  let guard = 0;
+  while (guard++ < 64){
+    const i = loadedChunkCount();
+    const prev = window.REPOS_CHUNKS[i - 1];
+    if (prev && prev.length < CHUNK_SIZE) break;   // previous chunk was partial -> end of data
+    await ensureChunk(i);
+    if (i >= loadedChunkCount()) break;            // nothing new loaded (e.g. error) -> stop
+  }
+}
 function matchLocalTag(r){
   const t = state.tag.trim().toLowerCase();
   if(!t) return false;
@@ -121,8 +168,13 @@ function buildRail(){
   const rows = currentRows();
   const counts = {};
   DATA.cats.forEach(c => { if(c.id !== 'all') counts[c.id] = 0; });
-  rows.forEach(r => catsOf(r).forEach(id => { if(id in counts) counts[id] += 1; }));
-  const items = [{id:'all', name:'全部项目', n:rows.length}]
+  if(state.view === 'total' && DATA.idx && DATA.idx.counts){
+    DATA.cats.forEach(c => { if(c.id !== 'all') counts[c.id] = DATA.idx.counts[c.id] || 0; });
+  } else {
+    rows.forEach(r => catsOf(r).forEach(id => { if(id in counts) counts[id] += 1; }));
+  }
+  const allN = (state.view === 'total' && DATA.idx) ? (DATA.idx.total || rows.length) : rows.length;
+  const items = [{id:'all', name:'全部项目', n:allN}]
     .concat(DATA.cats.filter(c => c.id !== 'all').map(c => ({id:c.id, name:c.name, n:counts[c.id]||0})));
   const list = items.map(x =>
     '<button class="side-item'+(x.n===0?' is-zero':'')+'" type="button" data-cat="'+esc(x.id)+'" aria-pressed="'+(x.id===state.cat)+'">'
@@ -186,7 +238,9 @@ function buildSort(){
   $('sort').value = state.sort;
 }
 function buildLangs(){
-  const langs = uniq(ALLROWS.concat(state.refreshRows).map(r => r.l).filter(Boolean)).sort();
+  const langs = (DATA.langs && DATA.langs.length)
+    ? DATA.langs.slice()
+    : uniq(ALLROWS.concat(state.refreshRows).map(r => r.l).filter(Boolean)).sort();
   $('lang').innerHTML = '<option value="">全部语言</option>'
     + langs.map(l => '<option value="'+esc(l)+'">'+esc(l)+'</option>').join('');
   $('lang').value = state.lang;
@@ -232,7 +286,7 @@ function rowHtml(r, i){
   if(r.i) stats.push('<span>issue '+num(r.i)+'</span>');
   return '<article class="repo">'
     + '<div class="repo__rank" aria-label="第 '+(i+1)+' 条">'+(i+1)+'</div>'
-    + '<div class="repo__body"><h3 class="repo__title"><a href="'+esc(r.u)+'" target="_blank" rel="noopener">'+esc(r.n)+'</a>'+badges(r)+'</h3>'
+    + '<div class="repo__body"><h3 class="repo__title"><a href="'+esc(r.u || ('https://github.com/' + r.n))+'" target="_blank" rel="noopener">'+esc(r.n)+'</a>'+badges(r)+'</h3>'
     + (r.d ? '<p class="repo__desc">'+esc(r.d)+'</p>' : '')
     + chipsHtml(r)
     + '<div class="repo__stats">'+stats.map(s => s).join('')+'</div></div></article>';
@@ -287,7 +341,7 @@ function render(resetVisible){
   $('list').innerHTML = shown.length ? shown.map(rowHtml).join('') : emptyHtml('没有符合条件的项目');
   renderLoadmore(arr.length, shown.length);
 }
-function appendRows(extra){
+function appendNow(extra){
   const arr = filtered();
   const from = state.visible;
   const to = extra === Infinity ? arr.length : Math.min(arr.length, from + extra);
@@ -296,14 +350,27 @@ function appendRows(extra){
   $('list').insertAdjacentHTML('beforeend', arr.slice(from, to).map((r,i) => rowHtml(r, from+i)).join(''));
   renderLoadmore(arr.length, to);
 }
+function appendRows(extra){
+  const arr = filtered();
+  const to = extra === Infinity ? arr.length : Math.min(arr.length, state.visible + extra);
+  if(to <= state.visible) return;
+  // Load any chunk the new range needs first; otherwise append synchronously so
+  // immediate clicks stay responsive (and headless checks stay synchronous).
+  if(SHARDED && to - 1 >= loadedChunkCount() * CHUNK_SIZE){
+    ensureReposThrough(to - 1).then(() => appendNow(extra));
+    return;
+  }
+  appendNow(extra);
+}
 function showAll(){
-  const step = () => {
+  const finish = () => {
     if(state.visible >= filtered().length) return;
-    appendRows(200);
-    if(typeof requestAnimationFrame === 'function') requestAnimationFrame(step);
-    else setTimeout(step, 0);
+    appendNow(200);
+    if(typeof requestAnimationFrame === 'function') requestAnimationFrame(finish);
+    else setTimeout(finish, 0);
   };
-  step();
+  if(SHARDED) ensureAllChunks().then(finish);
+  else finish();
 }
 function setupSentinel(){
   if(!('IntersectionObserver' in window)) return;
@@ -533,7 +600,7 @@ function setupHeader(){
   onScroll();
 }
 function setupHero(){
-  $('kpiRepos').textContent = int(DATA.repos.length);
+  $('kpiRepos').textContent = int((DATA.idx && DATA.idx.total) || DATA.repos.length);
   $('kpiTrending').textContent = int(Object.values(DATA.trending||{}).reduce((a,rows) => a + rows.length, 0));
   $('kpiTopics').textContent = int((DATA.topics||[]).length);
   $('kpiCats').textContent = int(DATA.cats.filter(c => c.id !== 'all').length);

@@ -23,9 +23,19 @@ const data = JSON.parse(single.match(/<script id="repo-data" type="application\/
 const snapshot = read('site/data/snapshot.js');
 check(snapshot.startsWith('window.SNAPSHOT = '), 'site snapshot is a JS assignment (file:// safe)');
 check(snapshot.trim().endsWith(';'), 'site snapshot terminates correctly');
-const sitePayload = JSON.parse(snapshot.slice('window.SNAPSHOT = '.length).replace(/;\s*$/, ''));
-check(JSON.stringify(sitePayload).length === JSON.stringify(data).length,
-  'site and single-file carry identical payloads');
+const meta = JSON.parse(snapshot.slice('window.SNAPSHOT = '.length).replace(/;\s*$/, ''));
+check(meta.cats.length === 12, `12 categories in metadata (got ${meta.cats.length})`);
+check(meta.rules.length === 11, `11 classification rules in metadata (got ${meta.rules.length})`);
+check(meta.topics.length >= 100, `tag cloud >= 100 (got ${meta.topics.length})`);
+check(meta.coverage && meta.coverage.unique >= 900, 'coverage metadata declares the collected total');
+check(meta.coverage.perCategory === 200 && meta.coverage.searchCap === 1000,
+  'coverage bounds are explicit in the metadata');
+check(meta.idx && typeof meta.idx.total === 'number' && meta.idx.total >= 900,
+  'metadata ships a precise total for the sidebar');
+check(meta.idx && meta.idx.counts && Object.keys(meta.idx.counts).length === 11,
+  'metadata ships exact per-category counts');
+check(Array.isArray(meta.langs) && meta.langs.length >= 10,
+  `metadata ships the full language list (got ${meta.langs.length})`);
 
 check(data.repos.length >= 900, `cumulative catalogue >= 900 (got ${data.repos.length})`);
 check(data.coverage && data.coverage.unique >= 900, 'coverage metadata declares the collected total');
@@ -43,6 +53,32 @@ for (const p of ['daily', 'weekly', 'monthly']) {
 for (const w of ['90d', '365d']) check(data.newstars[w].length >= 100,
   `newstars ${w} keeps the full window (got ${data.newstars[w].length})`);
 
+const momentum = JSON.parse(read('site/data/momentum.js')
+  .replace('window.SNAPSHOT_MOMENTUM = ', '').replace(/;\s*$/, ''));
+for (const p of ['daily', 'weekly', 'monthly']) {
+  check(momentum.trending[p].length === data.trending[p].length, `trending ${p}: site and single-file agree`);
+}
+for (const w of ['90d', '365d']) {
+  check(momentum.newstars[w].length === data.newstars[w].length, `newstars ${w}: site and single-file agree`);
+}
+const chunkFiles = fs.readdirSync(path.join(root, 'site', 'data'))
+  .filter(f => /^repos-\d+\.js$/.test(f))
+  .sort((a, b) => Number(a.match(/\d+/)[0]) - Number(b.match(/\d+/)[0]));
+check(chunkFiles.length >= 5, `repos are sharded into chunks (got ${chunkFiles.length})`);
+const siteRepos = chunkFiles.map(f => {
+  const src = read(path.join('site', 'data', f));
+  const marker = src.lastIndexOf('REPOS_CHUNKS[');
+  const eq = src.indexOf('=', marker);
+  const start = src.indexOf('[', eq);
+  return JSON.parse(src.slice(start).replace(/;\s*$/, ''));
+}).reduce((acc, c) => acc.concat(c), []);
+check(siteRepos.length === data.repos.length,
+  `sharded repos reconcile with single-file (${siteRepos.length} vs ${data.repos.length})`);
+check(siteRepos.every(r => !('u' in r) && !('cats' in r)),
+  'sharded repos strip redundant u/cats fields');
+check(data.repos.every(r => !('u' in r) && !('cats' in r)),
+  'single-file repos also strip u/cats (client re-derives them)');
+
 /* ---- build outputs ---- */
 for (const [label, html] of [['single-file', single], ['site', site]]) {
   check(!/__STYLE_BLOCK__|__DATA_BLOCK__|__APP_SCRIPT__|__FAVICON_BLOCK__|__SEO_BLOCK__|__TIME__/.test(html),
@@ -55,8 +91,9 @@ for (const [label, html] of [['single-file', single], ['site', site]]) {
 check(!/lorem ipsum|\[copy\]|>TODO<|>FIXME<|placeholder text/i.test(tpl),
   'template contains no placeholder copy');
 check(site.includes('href="assets/app.css"') && site.includes('src="data/snapshot.js"')
-      && site.includes('src="assets/app.js"'), 'site links its own assets');
-for (const f of ['assets/app.css', 'assets/app.js', 'assets/favicon.svg', 'data/snapshot.js']) {
+      && site.includes('src="data/momentum.js"') && site.includes('src="data/repos-0.js"')
+      && site.includes('src="assets/app.js"'), 'site links its own assets (meta + momentum + first chunk)');
+for (const f of ['assets/app.css', 'assets/app.js', 'assets/favicon.svg', 'data/snapshot.js', 'data/momentum.js', 'data/repos-0.js']) {
   check(fs.existsSync(path.join(root, 'site', f)), `site/${f} exists`);
 }
 check(single.includes('<style>') && single.includes('id="repo-data"') && single.includes('window.SNAPSHOT ||'),
