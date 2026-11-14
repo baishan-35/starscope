@@ -59,8 +59,56 @@ jobs:
           node --check src/app.js
           node tests/smoke.js
           node tests/contrast.js
+          node tests/function-check.js
 
-      - name: Publish to Cloudflare Pages
+      # The error-report sink (site/functions/api/errors.js) persists into a
+      # KV namespace. Config-as-code: when the namespace exists (created here
+      # if missing, best-effort — the deploy token may lack KV scope), a
+      # wrangler.toml attaches the ERRORS_KV binding at deploy time. Without
+      # it the function still accepts beacons and logs them, so nothing breaks.
+      - name: Ensure KV namespace for error reports
+        id: kv
+        continue-on-error: true
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+          TITLE="starscope-errors"
+          ID=$(npx --yes wrangler@3 kv namespace list 2>/dev/null \
+            | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);const n=a.find(x=>x.title.endsWith("starscope-errors"));if(n)console.log(n.id)}catch(e){}})' || true)
+          if [ -z "$ID" ]; then
+            OUT=$(npx --yes wrangler@3 kv namespace create "$TITLE" 2>&1) || { echo "$OUT"; exit 1; }
+            ID=$(printf '%s' "$OUT" | grep -oE '[0-9a-f]{32}' | head -1 || true)
+            if [ -z "$ID" ]; then echo "could not parse namespace id:"; echo "$OUT"; exit 1; fi
+          fi
+          {
+            echo 'name = "starscope"'
+            echo 'pages_build_output_dir = "site"'
+            echo 'compatibility_date = "2026-11-01"'
+            echo ''
+            echo '[[kv_namespaces]]'
+            echo 'binding = "ERRORS_KV"'
+            echo "id = \"$ID\""
+          } > wrangler.toml
+          echo "ERRORS_KV namespace: $ID"
+
+      - name: Publish to Cloudflare Pages (with KV binding)
+        id: deploy_kv
+        continue-on-error: true
+        if: steps.kv.outcome == 'success'
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy site --project-name=starscope --branch=main --commit-dirty=true
+
+      - name: Drop wrangler config for the plain fallback
+        if: steps.deploy_kv.outcome == 'failure'
+        run: rm -f wrangler.toml
+
+      - name: Publish to Cloudflare Pages (plain, no bindings)
+        if: steps.kv.outcome != 'success' || steps.deploy_kv.outcome == 'failure'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -6,10 +6,10 @@
  *  - Give the app a tiny event-reporting hook (window.STASCOPE_REPORT) for
  *    things that are not JS exceptions but still worth tracking: chunk load
  *    failures, tag-explorer API failures, online/offline transitions.
- *  - Optionally beacon events to a same-origin endpoint. Off by default so the
- *    strict CSP stays clean (connect-src only allows 'self' + api.github.com).
- *    Point window.__ERROR_REPORT_URL__ at a Cloudflare Worker on the same
- *    *.pages.dev origin to enable collection without touching the CSP.
+ *  - Beacon actionable events to a same-origin endpoint when
+ *    window.__ERROR_REPORT_URL__ is set (the build points it at the Pages
+ *    Function /api/errors when SITE_URL is configured). connect-src 'self'
+ *    already permits it, so the strict CSP stays clean.
  *
  * File:// safe: no modules, no fetch at load time, no external resources.
  */
@@ -29,13 +29,23 @@
     } catch (e) { return 'total'; }
   }
 
+  /* Only errors and actionable events are worth a network beacon — the
+   * offline/online transitions stay in the in-page buffer only. */
+  function worthBeaconing(rec) {
+    if (rec.type === 'event') {
+      return rec.category === 'chunk-load-failed' || rec.category === 'tag-api-failed';
+    }
+    return true; /* 'error' and 'resource-error' */
+  }
+
   function record(rec) {
     rec.t = new Date().toISOString();
     rec.view = view();
+    rec.page = location.pathname;
     rec.ua = navigator.userAgent;
     buf.push(rec);
     if (buf.length > MAX_BUF) buf.shift();
-    if (reportUrl && beaconCount < MAX_BEACON) {
+    if (reportUrl && beaconCount < MAX_BEACON && worthBeaconing(rec)) {
       beaconCount++;
       try {
         var blob = new Blob([JSON.stringify(rec)], { type: 'application/json' });

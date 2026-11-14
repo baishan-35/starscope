@@ -733,6 +733,34 @@ function tplT(el){
   if(el.dataset.zh === undefined) el.dataset.zh = el.textContent;
   el.textContent = t(el.dataset.zh);
 }
+/* Like tplT, but swaps only the trailing text node — safe for elements
+ * that also contain child elements (icons, links) the app must not destroy. */
+function tplTextNode(el){
+  if(!el) return;
+  const nodes = Array.from(el.childNodes).filter(n => n.nodeType === 3 && n.nodeValue.trim());
+  if(!nodes.length) return;
+  const last = nodes[nodes.length - 1];
+  if(el.dataset.zhT === undefined) el.dataset.zhT = last.nodeValue;
+  last.nodeValue = t(el.dataset.zhT);
+}
+/* Editorial selectors: pure-text chrome in the shell (hero, KPI notes,
+ * methodology / legal cards, CTA band, footer). Rich blocks with inner HTML
+ * use data-i18n + STASCOPE_I18N.applyStatic() instead. */
+const EDITORIAL_SEL = [
+  '.skip-link', '.nav__sub',
+  '.hero__sub', '.hero__visual-head strong', '.hero__visual-foot span:not(#heroPeak)',
+  '.kpis .kpi__note',
+  '#explore .section-head h2', '#explore .section-head p',
+  '#tagPanelTitle', '.tagpanel__sub', '.tag-form__note',
+  'label[for="cloudFilter"] span',
+  '#method .section-head h2', '#method .section-head p',
+  '#method .card h3', '#method .card p:not(.card__index)',
+  '.cta-band h2', '.cta-band > p', '.cta-band .cluster a',
+  '#legal .section-head h2', '#legal .section-head p',
+  '#legal .card h3', '#legal .card p:not(.card__index):not([data-i18n]):not(#legalCoverage)',
+  '.site-footer h4', '.site-footer a', '.site-footer p.text-muted',
+  '#detailTitle'
+];
 function applyLangChrome(){
   document.documentElement.lang = EN() ? 'en' : 'zh-CN';
   const btn = $('langToggle');
@@ -756,13 +784,24 @@ function applyLangChrome(){
     const sel = $(id);
     if(sel) sel.querySelectorAll('option').forEach(o => tplT(o));
   });
+  document.querySelectorAll('#tagMode option').forEach(o => tplT(o));
   document.querySelectorAll('.nav__links a, .mobile-menu a').forEach(a => tplT(a));
-  ['findMore', 'loadmoreBtn', 'tagGo', 'moreOnlineBtn', 'detailClose'].forEach(id => {
+  document.querySelectorAll('.hero__proof > span').forEach(s => tplTextNode(s));
+  EDITORIAL_SEL.forEach(sel => document.querySelectorAll(sel).forEach(el => tplT(el)));
+  ['findMore', 'loadmoreBtn', 'tagGo', 'moreOnlineBtn', 'navTags', 'heroExplore',
+   'heroRising', 'copyLinkBtn', 'ctaTags', 'detailTitle'].forEach(id => {
     const el = $(id);
     if(el && el.tagName === 'BUTTON' && id !== 'detailClose') tplT(el);
   });
+  const ph = (id, zh, en) => { const el = $(id); if(el) el.setAttribute('placeholder', EN() ? en : zh); };
+  ph('tagInput', '输入标签，如 rss、self-hosted、cli…', 'Type a tag, e.g. rss, self-hosted, cli…');
+  ph('cloudFilter', '例如 rust', 'e.g. rust');
   const dc = $('detailClose');
   if(dc) dc.setAttribute('aria-label', t('关闭详情（Esc）'));
+  /* Rich editorial blocks (data-i18n), then refresh the JS-generated hero
+   * strings — applyStatic rebuilds nodes such as #caveatCount. */
+  if(window.STASCOPE_I18N && window.STASCOPE_I18N.applyStatic) window.STASCOPE_I18N.applyStatic();
+  updateHeroDynamic();
 }
 function setupLang(){
   applyLangChrome();
@@ -798,19 +837,37 @@ function setupHero(){
   $('kpiTrending').textContent = int(Object.values(DATA.trending||{}).reduce((a,rows) => a + rows.length, 0));
   $('kpiTopics').textContent = int((DATA.topics||[]).length);
   $('kpiCats').textContent = int(DATA.cats.filter(c => c.id !== 'all').length);
-  $('snapshotStatus').textContent = '快照 ' + DATA.generated;
   const gains = (DATA.trending.daily||[]).slice(0,24).map(r => r.gain);
   const peak = Math.max.apply(null, gains.concat([1]));
   $('heroBarcode').innerHTML = gains.map(g =>
     '<span style="--h:'+Math.max(6, Math.round(g/peak*100))+'%"></span>').join('');
-  $('heroPeak').textContent = '峰值 +' + int(peak) + ' / 今日';
+  updateHeroDynamic();
+}
+/* JS-generated hero/legal strings, separated so a language switch can
+ * re-run them after applyStatic() rebuilds their nodes. */
+function updateHeroDynamic(){
+  $('snapshotStatus').textContent = t('快照 ') + DATA.generated;
+  const gains = (DATA.trending.daily||[]).slice(0,24).map(r => r.gain);
+  const peak = Math.max.apply(null, gains.concat([1]));
+  $('heroPeak').textContent = EN()
+    ? 'peak +' + int(peak) + ' / today'
+    : '峰值 +' + int(peak) + ' / 今日';
   const cov = DATA.coverage || {};
   const unique = cov.unique || ALLROWS.length;
   if($('caveatCount')) $('caveatCount').textContent = int(unique);
-  if($('legalCoverage')) $('legalCoverage').textContent =
-    '累计与新星数据来自 GitHub Search API，涨势数据来自 GitHub Trending 页面的日 / 周 / 月新增星标。'
-    + '本次快照 ' + DATA.generated + '（北京时间）生成，共收录 ' + int(unique) + ' 个去重项目；'
-    + '每类最多收录 ' + int(cov.perCategory || 200) + ' 条，官方单次查询上限 ' + int(cov.searchCap || 1000) + ' 条结果。';
+  if($('legalCoverage')){
+    if(EN()){
+      $('legalCoverage').textContent =
+        'Catalogue and new-repo data come from the GitHub Search API; momentum data from GitHub Trending (daily / weekly / monthly star gains). '
+        + 'Snapshot generated ' + DATA.generated + ' (Beijing time), covering ' + int(unique) + ' unique repos; '
+        + 'at most ' + int(cov.perCategory || 200) + ' per category, official search caps at ' + int(cov.searchCap || 1000) + ' results per query.';
+    }else{
+      $('legalCoverage').textContent =
+        '累计与新星数据来自 GitHub Search API，涨势数据来自 GitHub Trending 页面的日 / 周 / 月新增星标。'
+        + '本次快照 ' + DATA.generated + '（北京时间）生成，共收录 ' + int(unique) + ' 个去重项目；'
+        + '每类最多收录 ' + int(cov.perCategory || 200) + ' 条，官方单次查询上限 ' + int(cov.searchCap || 1000) + ' 条结果。';
+    }
+  }
 }
 function readUrl(){
   try{

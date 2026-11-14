@@ -649,13 +649,14 @@ def main():
         g = net_growth(history, r["n"], r.get("s") or 0, 30)
         if g is not None:
             r["n30"] = g
+    n30_covered = sum(1 for r in base if isinstance(r.get("n30"), int))
 
     record_history(history, base, trending, newstars, now_ts)
     with open(HISTORY, "w", encoding="utf-8", newline="\n") as fh:
         json.dump(history, fh, ensure_ascii=False, separators=(",", ":"))
-    print("  gain source: %s | history repos: %d" % (
+    print("  gain source: %s | history repos: %d | n30 covered: %d/%d" % (
         " ".join("%s=%dΔ/%dpg" % (p, gain_src[p]["delta"], gain_src[p]["page"]) for p in gain_src),
-        len(history.get("repos") or {})), flush=True)
+        len(history.get("repos") or {}), n30_covered, len(base)), flush=True)
 
     topics = build_topics(base, trending, newstars)
     all_names = {r["n"] for r in base}
@@ -679,6 +680,10 @@ def main():
             "rising": {p["id"]: len(trending.get(p["id"], [])) for p in PERIODS},
             "newstars": {w["id"]: len(newstars.get(w["id"], [])) for w in WINDOWS},
             "gainSource": gain_src,
+            # n30 coverage: how many catalogue rows carry a real 30-day net
+            # growth from snapshot history. Fills in as daily history accrues;
+            # audited ~monthly (see the one-shot check scheduled in the ops log).
+            "n30": {"covered": n30_covered, "total": len(base)},
         },
     }
     # ---- shard the heavy arrays for progressive / on-demand loading ----
@@ -760,11 +765,15 @@ def main():
     fav_data = "data:image/svg+xml," + quote(favicon, safe="")
 
     # Runtime monitor: shipped linked on the site, inlined in the single file.
-    # __ERROR_REPORT_URL__ stays empty by default so the strict CSP is untouched;
-    # set it (same-origin Worker) to start collecting errors.
-    monitor_cfg = '<script>window.__ERROR_REPORT_URL__="";</script>'
+    # With SITE_URL configured the site build points the monitor at the
+    # same-origin Pages Function /api/errors (functions/api/errors.js, copied
+    # into site/functions below). connect-src 'self' already permits it, so
+    # the strict CSP stays untouched. The single-file build stays silent — it
+    # runs from file:// where no origin and no endpoint exist.
+    report_url = "/api/errors" if SITE_URL else ""
+    monitor_cfg = '<script>window.__ERROR_REPORT_URL__="%s";</script>' % report_url
     site_monitor = monitor_cfg + '<script src="assets/monitor.js"></script>'
-    single_monitor = monitor_cfg + "<script>\n" + monitor + "\n</script>"
+    single_monitor = '<script>window.__ERROR_REPORT_URL__="";</script>' + "<script>\n" + monitor + "\n</script>"
 
     def esc(value):
         return html_lib.escape(str(value if value is not None else ""), quote=True)
@@ -940,7 +949,7 @@ __ROWS__
     # rewriting) and never injects its own default theme.
     with open(os.path.join(SITE, ".nojekyll"), "w", encoding="utf-8") as fh:
         fh.write("")
-    rss_link = ('<li><a href="rss.xml" target="_blank" rel="noopener">RSS 订阅 · 每周涨势精选</a></li>'
+    rss_link = ('<li data-i18n="footer.rss"><a href="rss.xml" target="_blank" rel="noopener">RSS 订阅 · 每周涨势精选</a></li>'
                 if SITE_URL else "")
     site_index = fill(
         '<link rel="stylesheet" href="assets/app.css">',
@@ -996,6 +1005,20 @@ __ROWS__
         fh.write(monitor)
     with open(os.path.join(SITE, "assets", "i18n.js"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(i18n)
+    # Pages Function: same-origin error-report sink. Copied verbatim into
+    # site/functions so `wrangler pages deploy site` picks it up as a route
+    # (POST/GET /api/errors). Regenerated from source on every build.
+    site_functions = os.path.join(SITE, "functions")
+    functions_src = os.path.join(HERE, "functions")
+    if os.path.isdir(site_functions):
+        shutil.rmtree(site_functions)
+    if os.path.isdir(functions_src):
+        for root, _dirs, files in os.walk(functions_src):
+            rel = os.path.relpath(root, functions_src)
+            dst_dir = site_functions if rel == "." else os.path.join(site_functions, rel)
+            os.makedirs(dst_dir, exist_ok=True)
+            for fn in files:
+                shutil.copyfile(os.path.join(root, fn), os.path.join(dst_dir, fn))
     with open(os.path.join(SITE, "assets", "favicon.svg"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(favicon)
     with open(os.path.join(SITE, "data", "snapshot.js"), "w", encoding="utf-8", newline="\n") as fh:
@@ -1034,6 +1057,9 @@ __ROWS__
         "\n"
         "/data/*\n"
         "  Cache-Control: public, max-age=21600\n"
+        "\n"
+        "/api/*\n"
+        "  Cache-Control: no-store\n"
     )
     with open(os.path.join(SITE, "_headers"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(headers)
@@ -1054,6 +1080,8 @@ __ROWS__
     print("  site/index.html + catalogue.html + assets/ + data/  (standalone tool site)", flush=True)
     print("    snapshot.js(meta) + momentum.js + repos-*.js (%d chunks x %d)" % (len(repo_chunks), CHUNK), flush=True)
     print("  canonical/sitemap: %s" % (SITE_URL or "disabled (set SITE_URL to enable)"), flush=True)
+    print("  error reporting: %s" % ("POST /api/errors (Pages Function + KV)" if SITE_URL
+                                     else "off (set SITE_URL to enable the /api/errors sink)"), flush=True)
     print("  github-explorer.html                (single file, %.1f KB)" % (len(out.encode("utf-8")) / 1024), flush=True)
     print("  cumulative %d | rising %s | new %s | topics %d" % (
         len(base),

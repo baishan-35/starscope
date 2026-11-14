@@ -73,6 +73,12 @@ window.addEventListener('load',function(){setTimeout(function(){
       res.langAfter=d.documentElement.lang;
       var tabEl=d.querySelector('#tabs [data-view="total"]');
       res.tabAfter=(tabEl&&tabEl.textContent)||'';
+      res.heroTitle=(d.getElementById('heroTitle')||{}).textContent||'';
+      res.footerH4=(d.querySelector('.footer-grid > div:nth-child(2) h4')||{}).textContent||'';
+      res.snapshotStatus=(d.getElementById('snapshotStatus')||{}).textContent||'';
+      res.heroProof=(d.querySelector('.hero__proof span:last-child')||{}).textContent||'';
+      res.methodTitle=(d.getElementById('methodTitle')||{}).textContent||'';
+      res.legalNotice=(d.querySelector('[data-i18n="legal.notice"]')||{}).textContent||'';
     }
     var p=d.createElement('pre');p.id='wbprobe';p.textContent=JSON.stringify(res);d.body.appendChild(p);
   },260);
@@ -155,6 +161,12 @@ for (const c of configs) {
   check(r.favToggleShown === true, p('favourites toggle is visible in the summary bar'));
   check(r.langAfter === 'en' && /Catalogue/.test(r.tabAfter),
     p(`language toggle switches the chrome to English (lang=${r.langAfter}, tab="${String(r.tabAfter).slice(0, 24)}")`));
+  check(/great projects/.test(r.heroTitle) && /Three metrics/.test(r.methodTitle),
+    p(`editorial hero/method copy translates (hero="${String(r.heroTitle).slice(0, 32)}…", method="${String(r.methodTitle).slice(0, 24)}")`));
+  check(/Browse/.test(r.footerH4) && /every indexed repo/.test(r.heroProof) && /^snapshot/.test(r.snapshotStatus),
+    p(`footer/hero-proof/snapshot chrome translates (h4="${r.footerH4}", proof="${String(r.heroProof).slice(0, 22)}", status="${String(r.snapshotStatus).slice(0, 14)}")`));
+  check(/courtesy translation/.test(r.legalNotice),
+    p('the legal card shows its English courtesy-translation notice'));
   check(r.afterTags.cats === 12 && r.afterTags.tagHidden === false,
     p('tag view keeps category tree and reveals tag panel'));
   check(r.errs.length === 0, p(`no runtime errors${r.errs.length ? ' — ' + r.errs.join('; ') : ''}`));

@@ -126,6 +126,26 @@ check(/toastHost/.test(monitorSrc) && /aria-live/.test(monitorSrc) && /unhandled
   'monitor catches errors/rejections and surfaces an accessible toast');
 check(/#toastHost/.test(styles) && /toast--err/.test(styles), 'toast styles are defined');
 check(!/sendBeacon/.test(app), 'the app itself never beacons — only the monitor does');
+check(/worthBeaconing/.test(monitorSrc) && /rec\.page\s*=/.test(monitorSrc),
+  'monitor filters beacon-worthy events and tags each record with its page');
+
+/* ---- error-report endpoint (Tier B follow-up: Pages Function + KV) ---- */
+const fnSrc = read('functions/api/errors.js');
+check(fs.existsSync(path.join(root, 'site', 'functions', 'api', 'errors.js'))
+      && read('site/functions/api/errors.js') === fnSrc,
+  'site/functions/api/errors.js is copied verbatim from functions/');
+check(/onRequestPost/.test(fnSrc) && /onRequestGet/.test(fnSrc) && /ERRORS_KV/.test(fnSrc),
+  'the function handles POST (store) and GET (aggregate counts)');
+check(/expirationTtl/.test(fnSrc) && /8192/.test(fnSrc) && /sameOrigin/.test(fnSrc),
+  'the function caps payload size, checks same-origin, and TTLs its writes');
+check(read('site/_headers').includes('/api/*') && read('site/_headers').includes('no-store'),
+  '_headers marks /api/* as no-store');
+/* SITE_URL build turns the beacon on; the local default build keeps it off. */
+const reportCfg = (site.match(/__ERROR_REPORT_URL__="([^"]*)"/) || [])[1] || '';
+check(reportCfg === '/api/errors' || reportCfg === '',
+  `site error-report URL is "/api/errors" (SITE_URL build) or "" (local): got "${reportCfg}"`);
+check(single.includes('__ERROR_REPORT_URL__=""'),
+  'single-file build never beacons (no origin on file://)');
 
 /* ---- Tier D: i18n scaffold ---- */
 const i18nSrc = read('src/i18n.js');
@@ -139,6 +159,19 @@ check(/window\.t\s*=/.test(i18nSrc) && /'en'/.test(i18nSrc) && /starscope-lang/.
 check(/\bt\(/.test(app) && /STASCOPE_I18N/.test(app) && /applyLangChrome/.test(app),
   'app routes dynamic strings through t() and swaps the chrome on switch');
 check(/id="langToggle"/.test(tpl), 'template ships the language toggle');
+/* Editorial i18n: every data-i18n block must have an EN_HTML entry, and the
+ * app must apply static + dynamic translations on every language switch. */
+const i18nKeys = [...tpl.matchAll(/data-i18n="([^"]+)"/g)].map(m => m[1]);
+check(i18nKeys.length >= 7, `template tags the rich editorial blocks (${i18nKeys.length} data-i18n keys)`);
+check(i18nKeys.every(k => new RegExp("'" + k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + "'\\s*:").test(i18nSrc)),
+  'every data-i18n key has an English HTML overlay');
+check(/'footer\.rss'/.test(i18nSrc), 'the build-injected RSS link has a translation key');
+check(/applyStatic/.test(i18nSrc) && /\{time\}/.test(i18nSrc),
+  'i18n swaps static blocks with {time} substitution');
+check(/applyStatic/.test(app) && /updateHeroDynamic/.test(app) && /EDITORIAL_SEL/.test(app),
+  'app applies static translations and re-renders JS-generated hero strings');
+check(/courtesy translation/.test(i18nSrc),
+  'the English legal card declares itself a courtesy translation');
 check(single.includes('<style>') && single.includes('id="repo-data"') && single.includes('window.SNAPSHOT ||'),
   'single-file inlines CSS, data and app with dual-source data loader');
 check(read('site/assets/app.js') === app, 'site app.js is byte-identical to src/app.js');

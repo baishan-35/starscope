@@ -7,10 +7,11 @@
  * entry at a time.
  *
  * Deliberate scope: the interactive workbench (tabs, filters, results,
- * detail sheet, favourites, load-more, tag panel, statuses) is bilingual.
- * The page shell's editorial copy (hero, methodology, legal, footer) stays
- * Chinese in this iteration — compliance wording in particular is reviewed
- * against the official GitHub terms in Chinese only.
+ * detail sheet, favourites, load-more, tag panel, statuses) AND the page
+ * shell's editorial copy (hero, methodology, legal, footer) are bilingual.
+ * The English legal card is explicitly a courtesy translation — for
+ * compliance wording the Chinese original together with GitHub's official
+ * terms govern.
  */
 (function () {
   'use strict';
@@ -105,11 +106,90 @@
     /* misc chrome */
     '用标签探索 →': 'Try tags →', '在线补充此分类': 'Refresh this category online',
     '查看数据来源': 'Data sources', '重新查询该标签': 'Re-query this tag',
-    '移除 ': 'Remove ', '继续加载': 'Load more'
+    '移除 ': 'Remove ', '继续加载': 'Load more',
+    /* editorial copy: shell, hero, method, CTA, legal, footer */
+    '跳到主内容': 'Skip to main content',
+    'GitHub 项目雷达': 'GitHub project radar',
+    '直接看涨势目录': 'See the momentum view',
+    '按分类浏览、按标签筛选，已收录项目从高到低完整列出，不做「前 N 名」截断。累计星标只记录过去，涨势目录给你现在正在发生的事。':
+      'Browse by category, filter by tag — every indexed repo listed in full, no "top N" cutoffs. Total stars record the past; the momentum view shows what is happening right now.',
+    'Trending 多语言聚合': '16-language Trending merge',
+    '已收录项目完整列出': 'every indexed repo listed',
+    '今日新增星标 · 头部 24 项': 'New stars today · top 24',
+    '数据源 GitHub Trending': 'Source: GitHub Trending',
+    '累计目录去重项目': 'unique repos indexed',
+    '日 / 周 / 月窗口合计': 'daily / weekly / monthly',
+    '可继续探索的标签': 'topics to explore',
+    '贯穿所有视角的分类': 'categories across views',
+    '项目浏览器': 'Project browser',
+    '已收录项目按分数从高到低完整列出，筛选条件随时可见、一键可清。':
+      'Every indexed repo, best-first. Filters stay visible and clear in one click.',
+    '复制当前视图链接': 'Copy view link',
+    '快照只收录有限项目。点项目上的 #标签、从标签云选一个，或直接输入标签，即可实时向 GitHub 查询同类项目，把目录之外的项目也找出来。':
+      'The snapshot is finite. Tap a #tag on a project, pick one from the cloud, or type one — the tag explorer queries GitHub live for similar projects beyond the catalogue.',
+    '在线查询由浏览器直接匿名请求 GitHub 公开 API，本站不接收、不存储任何凭据。匿名额度约 10 次/分钟，繁忙时稍后重试即可。':
+      'Online queries go straight from your browser to the public GitHub API — this site receives and stores no credentials. Anonymous quota is ~10 requests/minute; retry shortly if busy.',
+    '筛选标签云': 'Filter the tag cloud',
+    '例如 rust': 'e.g. rust',
+    '三种指标，别只看一种': 'Three metrics — do not trust just one',
+    '累计目录回答「谁攒得多」，涨势目录回答「现在谁在涨」，标签探索负责快照没收录到的长尾。三者都从高到低完整列出。':
+      'The catalogue answers "who has the most", momentum answers "who is rising now", and tags cover the long tail beyond the snapshot. All three list everything they hold, best-first.',
+    '按分类从 GitHub Search API 取回项目，每类最多 200 条，按星标从高到低完整列出，不做榜单式截断。适合找成熟、可长期依赖的基础设施，代价是老项目有先发优势。':
+      'Repos are pulled per category from the GitHub Search API (up to 200 each) and listed best-first with no leaderboard cutoffs. Great for finding mature infrastructure to depend on — the cost is the incumbents\' head start.',
+    '窗口增量': 'Window gains',
+    '合并 16 张 GitHub Trending 页面，保留日 / 周 / 月全部带真实增量的项目并按新增星标降序完整列出。增量数字优先取自本站快照差分（可复现），无历史时回退 Trending 页面数字。「涨幅 = 新增 ÷ 总量」让小基数高增长浮上来。':
+      'Sixteen GitHub Trending pages merge into daily / weekly / monthly lists with real star gains, sorted by new stars. Gains prefer this site\'s snapshot deltas (reproducible) and fall back to the Trending page numbers until history exists. "Ratio = gain ÷ total" surfaces fast movers on a small base.',
+    '标签扩散': 'Tag diffusion',
+    '从任意项目的 topic 出发，实时查询该标签下的其他仓库，再顺着「相关标签」继续挖，把快照之外的项目也纳入结果。':
+      'Start from any repo\'s topics, query other repositories under that tag live, then keep digging through "related tags" to pull in projects beyond the snapshot.',
+    '目录里没找到？': 'Not in the catalogue?',
+    '换一条路径：从标签出发，实时拉取 GitHub 上同类但本站还没收录的项目。':
+      'Take another path: start from a tag and pull similar repos live from GitHub — including ones this site has not indexed yet.',
+    '回到分类浏览': 'Back to browsing',
+    '数据来源、边界与声明': 'Data sources, boundaries & notices',
+    '把「全部」说清楚：这里完整列出的是本站已收录的项目，不是 GitHub 全量仓库。':
+      'Being clear about "everything": the full lists cover repos this site has indexed — not all of GitHub.',
+    '非官方、非隶属': 'Unofficial & unaffiliated',
+    '数据来源与覆盖': 'Data sources & coverage',
+    '隐私与凭据': 'Privacy & credentials',
+    '准确性与局限': 'Accuracy & limits',
+    '本站无账号体系、无服务端日志、无第三方统计与广告；仅在浏览器本地保存主题偏好。标签探索由浏览器直接向 GitHub 公开 API 发起匿名请求，不收集、不传输任何访问凭据。匿名额度约 10 次/分钟，超限稍后重试即可。':
+      'No accounts, no server-side logs, no third-party analytics or ads — only the theme preference is stored in your browser. Tag exploration calls the public GitHub API anonymously straight from the browser; no credentials are collected or transmitted. Anonymous quota is ~10 requests/minute; retry later if exceeded.',
+    '涨势数据只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今的平均值。「近 30 天净增长」依赖本站逐日快照历史，会随运行时间逐步精确。所有数字以 GitHub 实时页面为准，本站不对数据的完整性或时效性作保证。':
+      'Momentum data is only the top slice of Trending — rising fast does not mean being good. The new-repos "stars per day" is a lifetime average. "30-day net growth" depends on this site\'s daily snapshot history and sharpens as it accumulates. All numbers defer to the live GitHub page; completeness and timeliness are not guaranteed.',
+    '浏览': 'Browse',
+    '数据源': 'Data sources',
+    '数据来源与声明': 'Data sources & notices',
+    '指标口径与局限': 'Metrics & limits',
+    '给中文开发者的 GitHub 项目发现工具。数据本地生成，页面无需登录。':
+      'A GitHub project-discovery tool. The snapshot is generated by a local pipeline; the page needs no login.',
+    '快照 ': 'snapshot '
   };
 
   var lang = 'zh';
   try { lang = localStorage.getItem(STORE_KEY) || 'zh'; } catch (e) { lang = 'zh'; }
+
+  /* Editorial blocks that carry inner HTML (links, <em>, dynamic spans)
+   * cannot go through textContent swaps. The template marks them with
+   * data-i18n="<key>"; the zh original is cached from the DOM on the first
+   * pass and restored when switching back. {time} resolves to the snapshot
+   * generation timestamp at runtime. */
+  var EN_HTML = {
+    'hero.eyebrow': 'GitHub discovery · snapshot {time}',
+    'hero.title': 'Don\u2019t let <em>great projects</em> sink into yesterday\u2019s rankings.',
+    'method.caveat': '<strong>What \u201ceverything\u201d covers:</strong> the complete lists are the repos this site has indexed (<span id="caveatCount">\u2014</span>), not all of GitHub \u2014 official search returns at most 1000 results per query and the snapshot refreshes on a schedule. Momentum data is still only the top slice of Trending: rising fast \u2260 being good. The new-repos \u201cstars per day\u201d is a lifetime average, not last-30-day net growth.',
+    'legal.notice': 'Starscope is an independent third-party tool with no affiliation with, endorsement by, or authorization from GitHub, Inc. GitHub is a trademark of GitHub, Inc.; repository names and descriptions belong to their respective owners. This site uses public data under GitHub\u2019s <a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service" target="_blank" rel="noopener">Terms of Service</a>, <a href="https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies" target="_blank" rel="noopener">Acceptable Use Policies</a> and <a href="https://github.com/logos" target="_blank" rel="noopener">brand guidance</a>; those terms were verified on 2026-11-14 and the official texts prevail. This English page is a courtesy translation \u2014 for compliance wording, the Chinese original together with GitHub\u2019s official terms govern.',
+    'footer.snapshot': 'Snapshot {time}, auto-generated',
+    'footer.legal.time': 'Snapshot {time} (Beijing time) · refreshed on a schedule',
+    'footer.legal.note': '<a href="#legal">Not affiliated with GitHub · privacy &amp; notices</a> · star counts defer to the live GitHub page',
+    'footer.rss': '<a href="rss.xml" target="_blank" rel="noopener">RSS feed · weekly momentum digest</a>'
+  };
+
+  function fillTime(html) {
+    var gen = '';
+    try { gen = (window.SNAPSHOT && window.SNAPSHOT.generated) || ''; } catch (e) {}
+    return html.replace(/\{time\}/g, gen);
+  }
 
   window.STASCOPE_I18N = {
     lang: lang,
@@ -117,6 +197,19 @@
       lang = (l === 'en') ? 'en' : 'zh';
       this.lang = lang;
       try { localStorage.setItem(STORE_KEY, lang); } catch (e) {}
+    },
+    /* Swap every [data-i18n] block between its cached zh original and the
+     * English overlay. Call after toggling the language (and once at boot
+     * when the stored language is English). */
+    applyStatic: function () {
+      var en = lang === 'en';
+      var blocks = document.querySelectorAll('[data-i18n]');
+      for (var i = 0; i < blocks.length; i++) {
+        var el = blocks[i];
+        if (el.__zhHtml === undefined) el.__zhHtml = el.innerHTML;
+        var entry = EN_HTML[el.getAttribute('data-i18n')];
+        el.innerHTML = (en && entry != null) ? fillTime(entry) : el.__zhHtml;
+      }
     }
   };
 

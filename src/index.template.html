@@ -52,8 +52,8 @@ __STYLE_BLOCK__
   <section class="hero" aria-labelledby="heroTitle">
     <div class="container hero__grid">
       <div>
-        <p class="eyebrow" data-reveal>GitHub discovery · 快照 __TIME__</p>
-        <h1 class="hero__title" id="heroTitle" data-reveal>别让<em>好项目</em><br>埋在历史排名里。</h1>
+        <p class="eyebrow" data-reveal data-i18n="hero.eyebrow">GitHub discovery · 快照 __TIME__</p>
+        <h1 class="hero__title" id="heroTitle" data-reveal data-i18n="hero.title">别让<em>好项目</em><br>埋在历史排名里。</h1>
         <p class="hero__sub" data-reveal>按分类浏览、按标签筛选，已收录项目从高到低完整列出，不做「前 N 名」截断。累计星标只记录过去，涨势目录给你现在正在发生的事。</p>
         <div class="hero__actions" data-reveal>
           <a class="btn btn--primary" href="#explore" id="heroExplore">开始探索 ↓</a>
@@ -126,7 +126,7 @@ __STYLE_BLOCK__
               <button class="btn btn--primary" id="tagGo" type="button">搜索项目</button>
             </div>
             <div class="tag-form__advanced">
-              <label for="cloudFilter">筛选标签云<input id="cloudFilter" type="search" placeholder="例如 rust" autocomplete="off"></label>
+              <label for="cloudFilter"><span>筛选标签云</span><input id="cloudFilter" type="search" placeholder="例如 rust" autocomplete="off"></label>
               <span class="tag-form__note">在线查询由浏览器直接匿名请求 GitHub 公开 API，本站不接收、不存储任何凭据。匿名额度约 10 次/分钟，繁忙时稍后重试即可。</span>
             </div>
             <div class="cloud" id="cloud"></div>
@@ -174,7 +174,7 @@ __STYLE_BLOCK__
         <article class="card"><p class="card__index">02 / FLOW</p><h3>窗口增量</h3><p>合并 16 张 GitHub Trending 页面，保留日 / 周 / 月全部带真实增量的项目并按新增星标降序完整列出。增量数字优先取自本站快照差分（可复现），无历史时回退 Trending 页面数字。「涨幅 = 新增 ÷ 总量」让小基数高增长浮上来。</p></article>
         <article class="card"><p class="card__index">03 / GRAPH</p><h3>标签扩散</h3><p>从任意项目的 topic 出发，实时查询该标签下的其他仓库，再顺着「相关标签」继续挖，把快照之外的项目也纳入结果。</p></article>
       </div>
-      <p class="caveat"><strong>「全部」的边界：</strong>这里完整列出的是本站已收录的项目（<span id="caveatCount">—</span> 个），不是 GitHub 全量仓库——官方单次搜索最多返回 1000 条结果，快照也是定时抓取的。涨势数据仍只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今平均值，不是近 30 天净增长。</p>
+      <p class="caveat" data-i18n="method.caveat"><strong>「全部」的边界：</strong>这里完整列出的是本站已收录的项目（<span id="caveatCount">—</span> 个），不是 GitHub 全量仓库——官方单次搜索最多返回 1000 条结果，快照也是定时抓取的。涨势数据仍只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今平均值，不是近 30 天净增长。</p>
     </div>
   </section>
 
@@ -196,7 +196,7 @@ __STYLE_BLOCK__
         <p>把「全部」说清楚：这里完整列出的是本站已收录的项目，不是 GitHub 全量仓库。</p>
       </div>
       <div class="grid-auto">
-        <article class="card"><p class="card__index">01 / NOTICE</p><h3>非官方、非隶属</h3><p>Starscope 是独立第三方工具，与 GitHub, Inc. 无隶属、授权或背书关系。GitHub 是 GitHub, Inc. 的商标，项目名称与描述归各自所有者。本站依据 GitHub 的<a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service" target="_blank" rel="noopener">服务条款</a>、<a href="https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies" target="_blank" rel="noopener">可接受使用政策</a>与<a href="https://github.com/logos" target="_blank" rel="noopener">品牌使用说明</a>使用公开数据；上述条款核验于 2026-11-14，以官方最新文本为准。</p></article>
+        <article class="card"><p class="card__index">01 / NOTICE</p><h3>非官方、非隶属</h3><p data-i18n="legal.notice">Starscope 是独立第三方工具，与 GitHub, Inc. 无隶属、授权或背书关系。GitHub 是 GitHub, Inc. 的商标，项目名称与描述归各自所有者。本站依据 GitHub 的<a href="https://docs.github.com/en/site-policy/github-terms/github-terms-of-service" target="_blank" rel="noopener">服务条款</a>、<a href="https://docs.github.com/en/site-policy/acceptable-use-policies/github-acceptable-use-policies" target="_blank" rel="noopener">可接受使用政策</a>与<a href="https://github.com/logos" target="_blank" rel="noopener">品牌使用说明</a>使用公开数据；上述条款核验于 2026-11-14，以官方最新文本为准。</p></article>
         <article class="card"><p class="card__index">02 / SOURCE</p><h3>数据来源与覆盖</h3><p id="legalCoverage">累计与新星数据来自 GitHub Search API，涨势数据来自 GitHub Trending 页面的日 / 周 / 月新增星标。快照 __TIME__（北京时间）自动生成。每类最多收录 200 条，官方单次查询上限 1000 条结果。</p></article>
         <article class="card"><p class="card__index">03 / PRIVACY</p><h3>隐私与凭据</h3><p>本站无账号体系、无服务端日志、无第三方统计与广告；仅在浏览器本地保存主题偏好。标签探索由浏览器直接向 GitHub 公开 API 发起匿名请求，不收集、不传输任何访问凭据。匿名额度约 10 次/分钟，超限稍后重试即可。</p></article>
         <article class="card"><p class="card__index">04 / LIMITS</p><h3>准确性与局限</h3><p>涨势数据只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今的平均值。「近 30 天净增长」依赖本站逐日快照历史，会随运行时间逐步精确。所有数字以 GitHub 实时页面为准，本站不对数据的完整性或时效性作保证。</p></article>
@@ -234,12 +234,12 @@ __STYLE_BLOCK__
       </div>
       <div>
         <h4>关于</h4>
-        <ul><li><a href="#legal">数据来源与声明</a></li><li><a href="#method">指标口径与局限</a></li>__RSS_LINK__<li>快照 __TIME__ 自动生成</li></ul>
+        <ul><li><a href="#legal">数据来源与声明</a></li><li><a href="#method">指标口径与局限</a></li>__RSS_LINK__<li data-i18n="footer.snapshot">快照 __TIME__ 自动生成</li></ul>
       </div>
     </div>
     <div class="footer-legal">
-      <span>快照 __TIME__（北京时间） · 定时自动更新</span>
-      <span><a href="#legal">非 GitHub 官方产品 · 隐私与声明</a> · 星标数据以 GitHub 实时页面为准</span>
+      <span data-i18n="footer.legal.time">快照 __TIME__（北京时间） · 定时自动更新</span>
+      <span data-i18n="footer.legal.note"><a href="#legal">非 GitHub 官方产品 · 隐私与声明</a> · 星标数据以 GitHub 实时页面为准</span>
     </div>
   </div>
 </footer>
