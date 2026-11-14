@@ -1,8 +1,8 @@
 name: Build & deploy Starscope
 
-# Tier A fix: CI now actually deploys. Every run builds the static site and
-# publishes it to GitHub Pages (free HTTPS + global CDN). A push to main, the
-# 6-hourly schedule, or a manual dispatch all trigger a fresh deploy.
+# Deploy to Cloudflare Pages. GitHub Actions owns the build + the 6-hourly
+# snapshot refresh, then publishes the static site to Cloudflare Pages
+# (free global CDN + HTTPS + custom response headers via site/_headers).
 on:
   push:
     branches: [main]
@@ -10,25 +10,17 @@ on:
     - cron: "17 */6 * * *"
   workflow_dispatch: {}
 
-# Pages needs pages:write + id-token:write; checkout only needs contents:read.
-# We no longer commit the built site back, so contents:write is not required
-# and there is no self-triggering loop.
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
-  group: pages-deploy
+  group: cloudflare-deploy
   cancel-in-progress: false
 
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,9 +31,10 @@ jobs:
       - name: Build site (refresh snapshot, strict validation)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Default to the GitHub Pages project URL (https://<owner>.github.io/<repo>).
-          # Override with a custom domain via repo Settings > Variables > SITE_URL.
-          SITE_URL: ${{ vars.SITE_URL || format('https://{0}.github.io/{1}', github.repository_owner, github.event.repository.name) }}
+          # Public origin for canonical / og:url / sitemap. Set repo
+          # Settings > Variables > SITE_URL to your Cloudflare Pages URL or
+          # custom domain, e.g. https://starscope.pages.dev (no trailing slash).
+          SITE_URL: ${{ vars.SITE_URL }}
           CI: "true"
         run: python build_github_explorer.py --force --ci
 
@@ -51,11 +44,11 @@ jobs:
           node tests/smoke.js
           node tests/contrast.js
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Publish to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
         with:
-          path: site
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: starscope
+          directory: site
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

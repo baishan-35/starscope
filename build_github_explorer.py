@@ -699,6 +699,32 @@ __ROWS__
     with open(os.path.join(SITE, "data", "snapshot.js"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write("window.SNAPSHOT = " + data_json + ";\n")
 
+    # Cloudflare Pages response headers: a security CSP plus long-cache for the
+    # static assets. Harmless on GitHub Pages (it is ignored there). The CSP is
+    # audit-strict: no inline scripts (script-src 'self' only); 'unsafe-inline'
+    # is allowed solely for styles because catalogue.html ships an inline
+    # <style> and the app writes CSS custom properties inline for theming.
+    # connect-src permits the live tag-explorer queries to api.github.com.
+    headers = (
+        "/*\n"
+        "  Content-Security-Policy: default-src 'self'; script-src 'self';"
+        " style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+        " font-src 'self' data:; connect-src 'self' https://api.github.com;"
+        " object-src 'none'; base-uri 'self'; frame-ancestors 'none';"
+        " form-action 'none'\n"
+        "  X-Content-Type-Options: nosniff\n"
+        "  Referrer-Policy: strict-origin-when-cross-origin\n"
+        "  Permissions-Policy: geolocation=(), microphone=(), camera=(), payment=()\n"
+        "\n"
+        "/assets/*\n"
+        "  Cache-Control: public, max-age=31536000, immutable\n"
+        "\n"
+        "/data/*\n"
+        "  Cache-Control: public, max-age=21600\n"
+    )
+    with open(os.path.join(SITE, "_headers"), "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(headers)
+
     # 2) Self-contained single file: same sources, everything inlined.
     out = fill(
         "<style>\n" + css + "\n</style>",
