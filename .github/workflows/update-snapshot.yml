@@ -61,9 +61,12 @@ jobs:
       - name: Static checks
         run: |
           node --check src/app.js
+          python -m py_compile build_github_explorer.py
+          python tests/history_check.py
           node tests/smoke.js
           node tests/contrast.js
           node tests/function-check.js
+          node tests/shard-check.js
 
       # The error-report sink (site/functions/api/errors.js) persists into a
       # KV namespace. Config-as-code: when the namespace exists (created here

@@ -82,12 +82,18 @@ check(data.repos.every(r => !('u' in r) && !('cats' in r)),
 check(siteRepos.some(r => typeof r.ct === 'string') && siteRepos.filter(r => r.ct).length > 1000,
   `repos ship compact ct categories (got ${siteRepos.filter(r => r.ct).length})`);
 const CAT_IDS = new Set(data.cats.map(c => c.id));
-check(siteRepos.every(r => typeof r.ct !== 'string' || r.ct.split(' ').every(c => CAT_IDS.has(c))),
-  'ct strings reference valid category ids');
+check(siteRepos.every(r => typeof r.ct !== 'string' || !r.ct || r.ct.split(' ').every(c => CAT_IDS.has(c))),
+  'ct strings reference valid category ids (empty ct = unclassified)');
+check(siteRepos.every(r => typeof r.ct === 'string') && data.repos.every(r => typeof r.ct === 'string'),
+  'every catalogue row carries ct (even empty) so sidebar counts match filtering');
+check(data.trending.daily.every(r => !('ct' in r) || r.ct.length > 0),
+  'momentum rows are never overridden with an empty ct (they keep their classifier categories)');
 check(data.rules.every(r => r.id && (Array.isArray(r.w) || Array.isArray(r.k))),
   'rules ship word and/or substring keyword lists');
 check(/normTokens/.test(app) && /ct\.split/.test(app),
   'client mirrors the token-aware classifier and reads ct');
+check(/ensureFullCatalogue/.test(app) && /render\(false\)/.test(app),
+  'filtered views complete the shards so sidebar counts and search stay exact');
 for (const p of ['daily', 'weekly', 'monthly']) {
   check(data.trending[p].every(r => r.gsrc === 'delta' || r.gsrc === 'page'),
     `trending ${p}: every gain is labelled delta or page`);
@@ -177,6 +183,23 @@ check(single.includes('<style>') && single.includes('id="repo-data"') && single.
 check(read('site/assets/app.js') === app, 'site app.js is byte-identical to src/app.js');
 check(read('site/assets/app.css') === tokens + '\n\n' + styles, 'site stylesheet = tokens + app styles');
 
+/* ---- data honesty: copy must match what the site actually does ---- */
+const pySrc = read('build_github_explorer.py');
+check(/day_bucket/.test(pySrc) && /_baseline_tolerance/.test(pySrc),
+  'build keeps one stable daily history sample with a bounded delta baseline');
+check(/catalogue or cats/.test(pySrc), 'catalogue rows always carry ct, momentum rows do not');
+check(/\/api\/errors/.test(tpl) && !/无服务端日志/.test(tpl),
+  'privacy copy matches live behaviour (discloses the same-origin error sink)');
+check(/需累积约 30 天/.test(tpl) && /最接近 1 \/ 7 \/ 30 天前/.test(tpl),
+  'methodology states the n30 precondition and the delta baseline honestly');
+if (fs.existsSync(path.join(root, 'site', 'sitemap.xml'))) {
+  const sm = read('site/sitemap.xml'), cat = read('site/catalogue.html');
+  check(/\/catalogue<\/loc>/.test(sm) && !/catalogue\.html/.test(sm),
+    'sitemap uses the non-redirecting /catalogue URL');
+  check(/rel="canonical" href="[^"]*\/catalogue"/.test(cat) && !/canonical[^>]*catalogue\.html/.test(cat),
+    'catalogue canonical points at the final URL');
+}
+
 /* ---- semantics & token discipline (website-ui-designer Stage 5) ---- */
 check((tpl.match(/<h1\b/g) || []).length === 1, 'exactly one h1');
 check(/<header\b/.test(tpl) && /<nav\b/.test(tpl) && /<main\b/.test(tpl) && /<footer\b/.test(tpl),
@@ -237,6 +260,8 @@ check(/href="index\.html\?view=total&amp;cat=/.test(catalogue),
   'catalogue deep-links into the interactive tool');
 check(!/__[A-Z_]+__/.test(catalogue), 'catalogue has no unreplaced placeholders');
 check(/^User-agent: \*/m.test(read('site/robots.txt')), 'robots.txt has a valid user-agent rule');
+check(/404/.test(read('site/404.html')) && /noindex/.test(read('site/404.html')) && /返回 Starscope 首页/.test(read('site/404.html')),
+  'a custom 404.html ships so unknown URLs get a real 404, not a soft-404 homepage');
 
 /* ---- Tier D: detail sheet + favourites ---- */
 check(/role="dialog"/.test(tpl) && /aria-modal="true"/.test(tpl) && /id="detailTitle"/.test(tpl),

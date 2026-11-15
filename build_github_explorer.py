@@ -517,16 +517,38 @@ def load_history():
     return {"v": 1, "repos": {}}
 
 
-def _point_at_least_days_old(pts, days, tolerance_days):
-    """Newest history point that is at least `days` old (within tolerance)."""
+def _point_near_days_old(pts, days, tolerance_days, slack_hours=8):
+    """Daily sample closest to `days` ago, or None when history can't cover it.
+
+    History keeps one point per Beijing calendar day (the day's first build).
+    A strict `ts <= now - days` test fails whenever today's build runs a few
+    hours earlier than yesterday's, so allow a bounded slack on the recent
+    side while keeping the older tolerance. Recent points are still excluded:
+    e.g. daily requires a sample at least ~16h old, never last build's point.
+    """
     target = time.time() - days * 86400
+    lo = target - tolerance_days * 86400
+    hi = target + slack_hours * 3600
     best = None
     for ts, stars in pts:
-        if ts <= target and (best is None or ts > best[0]):
+        if lo <= ts <= hi and (best is None or abs(ts - target) < abs(best[0] - target)):
             best = [ts, stars]
-    if best is None or best[0] < target - tolerance_days * 86400:
-        return None
     return best
+
+
+def _baseline_tolerance(days):
+    """Max age (in days) beyond the advertised window for a valid baseline.
+
+    The old `max(1.5, days * 0.5)` let a 15-day-old sample stand in for a
+    30-day baseline — accurate to "sometime in the last six weeks", not
+    "the last 30 days". Keep the baseline close to the label so the UI copy
+    stays honest. The recent-side slack lives in _point_near_days_old.
+    """
+    if days <= 1:
+        return 0.5
+    if days >= 30:
+        return 2.0
+    return 1.0
 
 
 def delta_gain(history, name, stars, days):
@@ -534,8 +556,7 @@ def delta_gain(history, name, stars, days):
     pts = (history.get("repos") or {}).get(name) or []
     if not pts or not stars:
         return None
-    tolerance = max(1.5, days * 0.5)
-    point = _point_at_least_days_old(pts, days, tolerance)
+    point = _point_near_days_old(pts, days, _baseline_tolerance(days))
     if not point:
         return None
     return max(0, stars - point[1])
@@ -546,8 +567,7 @@ def net_growth(history, name, stars, days):
     pts = (history.get("repos") or {}).get(name) or []
     if not pts or not stars:
         return None
-    tolerance = max(2.0, days * 0.4)
-    point = _point_at_least_days_old(pts, days, tolerance)
+    point = _point_near_days_old(pts, days, _baseline_tolerance(days))
     if not point:
         return None
     return stars - point[1]
@@ -556,14 +576,22 @@ def net_growth(history, name, stars, days):
 def record_history(history, base, trending, newstars, now_ts):
     repos = history.setdefault("repos", {})
 
+    def day_bucket(ts):
+        """Beijing-time (UTC+8) calendar day — one stable sample per day."""
+        return int((ts + 8 * 3600) // 86400)
+
     def add(name, stars):
         if not name or not stars:
             return
         pts = repos.setdefault(name, [])
-        if pts and now_ts - pts[-1][0] < 20 * 3600:
-            pts[-1] = [now_ts, stars]      # refresh today's sample
-        else:
-            pts.append([now_ts, stars])
+        bucket = day_bucket(now_ts)
+        # Keep the FIRST sample of each day. Refreshing today's point on every
+        # build (CI runs every 6h) used to collapse the whole history into a
+        # single "today" point, which made snapshot deltas impossible forever.
+        # Skipping same-day updates also keeps delta baselines stable.
+        if pts and day_bucket(pts[-1][0]) == bucket:
+            return
+        pts.append([now_ts, stars])
         cutoff = now_ts - HISTORY_MAX_DAYS * 86400
         if len(pts) > 40:
             del pts[:-40]
@@ -696,19 +724,24 @@ def main():
     # client-side from the shipped RULES, so nothing is lost.
     CHUNK = 250
 
-    def slim(rec):
+    def slim(rec, catalogue=False):
         # Strip the URL (derivable from n). Categories ship as a compact
         # space-joined string 'ct' instead of a JSON array — same information,
         # roughly half the bytes, and the sidebar/filter stay exact without
         # re-running the classifier client-side for catalogue rows.
         out = {k: v for k, v in rec.items() if k not in ('u', 'cats')}
         cats = rec.get('cats') or []
-        if cats:
+        # Catalogue rows ALWAYS carry ct, even when empty. Otherwise the client
+        # falls back to classify() for unclassified rows, so filtering a
+        # category returns more rows than idx.counts advertises in the sidebar.
+        # Momentum/online rows have no ground-truth cats and must keep using
+        # the client classifier, so they only get ct when it is non-empty.
+        if catalogue or cats:
             out['ct'] = ' '.join(cats)
         return out
 
-    def slim_list(arr):
-        return [slim(r) for r in arr]
+    def slim_list(arr, catalogue=False):
+        return [slim(r, catalogue) for r in arr]
 
     # Classification counts + total, so the sidebar tree is exact without
     # having to load every chunk first.
@@ -741,10 +774,10 @@ def main():
         "trending": {p: slim_list(v) for p, v in trending.items()},
         "newstars": {w: slim_list(v) for w, v in newstars.items()},
     }
-    repo_chunks = [slim_list(base[i:i + CHUNK]) for i in range(0, len(base), CHUNK)]
+    repo_chunks = [slim_list(base[i:i + CHUNK], True) for i in range(0, len(base), CHUNK)]
     # Single-file build keeps the full payload inline (offline, no chunk fetch).
     full_slim = dict(payload)
-    full_slim["repos"] = slim_list(base)
+    full_slim["repos"] = slim_list(base, True)
     full_slim["trending"] = momentum_payload["trending"]
     full_slim["newstars"] = momentum_payload["newstars"]
     full_slim["idx"] = meta_payload["idx"]
@@ -825,7 +858,9 @@ def main():
             '<li><a href="index.html?view=total&amp;cat=%s">%s</a></li>'
             % (esc(c["id"]), esc(c["name"])) for c in cats
         )
-        canonical = ('<link rel="canonical" href="%s/catalogue.html">' % esc(SITE_URL)) if SITE_URL else ""
+        # Cloudflare Pages 308-redirects /catalogue.html -> /catalogue, so the
+        # canonical must point at the extensionless final URL.
+        canonical = ('<link rel="canonical" href="%s/catalogue">' % esc(SITE_URL)) if SITE_URL else ""
         page = """<!DOCTYPE html>
 <html lang="zh-CN" data-theme="dark">
 <head>
@@ -967,6 +1002,45 @@ __ROWS__
         fh.write(site_index)
     with open(os.path.join(SITE, "catalogue.html"), "w", encoding="utf-8", newline="\n") as fh:
         fh.write(build_catalogue(base, payload["cats"], now))
+    # Without a 404.html, Cloudflare Pages falls back to SPA behaviour and
+    # answers unknown URLs with 200 + the homepage (a soft 404). Shipping one
+    # makes Pages return a real 404 status for those URLs.
+    not_found = """<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>页面不存在 · Starscope</title>
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<style>
+:root{color-scheme:dark light}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;
+ background:#0d1117;color:#e6edf3;font:16px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:520px;text-align:center}
+.code{font:700 4rem/1 ui-monospace,SFMono-Regular,monospace;color:#58a6ff;margin:0 0 16px}
+h1{font-size:1.5rem;margin:0 0 12px}
+p{color:#8b949e;margin:0 0 28px}
+a{display:inline-block;padding:10px 20px;border-radius:8px;background:#58a6ff;color:#0d1117;
+ font-weight:600;text-decoration:none}
+a:hover{background:#79c0ff}
+a:focus-visible{outline:2px solid #79c0ff;outline-offset:3px}
+@media (prefers-color-scheme:light){body{background:#fafafb;color:#111827}p{color:#6b7280}
+ a{background:#2563eb;color:#fff}a:hover{background:#1d4ed8}}
+</style>
+</head>
+<body>
+<main>
+<p class="code">404</p>
+<h1>这个页面不存在</h1>
+<p>链接可能已失效，或地址拼写有误。回到首页继续浏览 GitHub 项目目录。</p>
+<a href="/">返回 Starscope 首页 →</a>
+</main>
+</body>
+</html>
+"""
+    with open(os.path.join(SITE, "404.html"), "w", encoding="utf-8", newline="\n") as fh:
+        fh.write(not_found)
     rss_xml = build_rss(trending, now)
     if rss_xml:
         with open(os.path.join(SITE, "rss.xml"), "w", encoding="utf-8", newline="\n") as fh:
@@ -979,7 +1053,7 @@ __ROWS__
     if SITE_URL:
         robots += "Sitemap: %s/sitemap.xml\n" % SITE_URL
         today = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
-        urls = [("", "daily", "1.0"), ("/catalogue.html", "daily", "0.8")]
+        urls = [("/", "daily", "1.0"), ("/catalogue", "daily", "0.8")]
         sitemap = ['<?xml version="1.0" encoding="UTF-8"?>',
                    '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
         for path, freq, prio in urls:

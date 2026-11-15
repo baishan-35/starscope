@@ -137,8 +137,8 @@
     '按分类从 GitHub Search API 取回项目，每类最多 200 条，按星标从高到低完整列出，不做榜单式截断。适合找成熟、可长期依赖的基础设施，代价是老项目有先发优势。':
       'Repos are pulled per category from the GitHub Search API (up to 200 each) and listed best-first with no leaderboard cutoffs. Great for finding mature infrastructure to depend on — the cost is the incumbents\' head start.',
     '窗口增量': 'Window gains',
-    '合并 16 张 GitHub Trending 页面，保留日 / 周 / 月全部带真实增量的项目并按新增星标降序完整列出。增量数字优先取自本站快照差分（可复现），无历史时回退 Trending 页面数字。「涨幅 = 新增 ÷ 总量」让小基数高增长浮上来。':
-      'Sixteen GitHub Trending pages merge into daily / weekly / monthly lists with real star gains, sorted by new stars. Gains prefer this site\'s snapshot deltas (reproducible) and fall back to the Trending page numbers until history exists. "Ratio = gain ÷ total" surfaces fast movers on a small base.',
+    '合并 16 张 GitHub Trending 页面，保留日 / 周 / 月全部带真实增量的项目并按新增星标降序完整列出。增量数字优先取自本站快照差分（可复现），无历史时回退 Trending 页面数字；差分基准取最接近 1 / 7 / 30 天前的每日快照采样，与自然日边界可能有偏差，历史不足时取最接近的可用采样，每条数据的口径在详情面板单独标注。「涨幅 = 新增 ÷ 总量」让小基数高增长浮上来。':
+      'Sixteen GitHub Trending pages merge into daily / weekly / monthly lists with real star gains, sorted by new stars. Gains prefer this site\'s snapshot deltas (reproducible) and fall back to the Trending page numbers until history exists. The delta baseline is the daily sample closest to 1 / 7 / 30 days ago, so it can differ from calendar-day boundaries; when history is thin the closest available sample is used, and each row labels its source in the detail sheet. "Ratio = gain ÷ total" surfaces fast movers on a small base.',
     '标签扩散': 'Tag diffusion',
     '从任意项目的 topic 出发，实时查询该标签下的其他仓库，再顺着「相关标签」继续挖，把快照之外的项目也纳入结果。':
       'Start from any repo\'s topics, query other repositories under that tag live, then keep digging through "related tags" to pull in projects beyond the snapshot.',
@@ -153,10 +153,10 @@
     '数据来源与覆盖': 'Data sources & coverage',
     '隐私与凭据': 'Privacy & credentials',
     '准确性与局限': 'Accuracy & limits',
-    '本站无账号体系、无服务端日志、无第三方统计与广告；仅在浏览器本地保存主题偏好。标签探索由浏览器直接向 GitHub 公开 API 发起匿名请求，不收集、不传输任何访问凭据。匿名额度约 10 次/分钟，超限稍后重试即可。':
-      'No accounts, no server-side logs, no third-party analytics or ads — only the theme preference is stored in your browser. Tag exploration calls the public GitHub API anonymously straight from the browser; no credentials are collected or transmitted. Anonymous quota is ~10 requests/minute; retry later if exceeded.',
-    '涨势数据只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今的平均值。「近 30 天净增长」依赖本站逐日快照历史，会随运行时间逐步精确。所有数字以 GitHub 实时页面为准，本站不对数据的完整性或时效性作保证。':
-      'Momentum data is only the top slice of Trending — rising fast does not mean being good. The new-repos "stars per day" is a lifetime average. "30-day net growth" depends on this site\'s daily snapshot history and sharpens as it accumulates. All numbers defer to the live GitHub page; completeness and timeliness are not guaranteed.',
+    '本站无账号体系、无第三方统计与广告。主题、界面语言与收藏列表只保存在你的浏览器本地。页面发生脚本异常或数据分块加载失败时，会把错误类型、错误消息、页面路径、当前视角与浏览器标识上报到本站同源的 /api/errors，仅用于排查故障；不含 Cookie、访问凭据或账号信息，单文件版不启用上报。标签探索由浏览器直接向 GitHub 公开 API 发起匿名请求，不收集、不传输任何访问凭据。匿名额度约 10 次/分钟，超限稍后重试即可。':
+      'No accounts, no third-party analytics or ads. Theme, interface language and favourites stay in your browser only. When a script error or a data-chunk failure occurs, the error type, message, page path, active view and browser user-agent are reported to this site\u2019s same-origin /api/errors endpoint solely for diagnosing faults; no cookies, credentials or account data are included, and the single-file build disables reporting entirely. Tag exploration calls the public GitHub API anonymously straight from the browser; no credentials are collected or transmitted. Anonymous quota is ~10 requests/minute; retry later if exceeded.',
+    '涨势数据只是 Trending 的头部切片，涨得快不等于质量好；新星目录的「日均涨星」是创建至今的平均值。「近 30 天净增长」依赖本站逐日快照历史，需累积约 30 天后才会出现，此前不做估算。所有数字以 GitHub 实时页面为准，本站不对数据的完整性或时效性作保证。':
+      'Momentum data is only the top slice of Trending — rising fast does not mean being good. The new-repos "stars per day" is a lifetime average. "30-day net growth" depends on this site\'s daily snapshot history and only appears once roughly 30 days have accumulated — no estimates before then. All numbers defer to the live GitHub page; completeness and timeliness are not guaranteed.',
     '浏览': 'Browse',
     '数据源': 'Data sources',
     '数据来源与声明': 'Data sources & notices',

@@ -173,6 +173,25 @@ async function ensureAllChunks(){
     if (i >= loadedChunkCount()) break;            // nothing new loaded (e.g. error) -> stop
   }
 }
+/* A filtered view must see the WHOLE catalogue, not just the first chunk:
+ * sidebar counts (DATA.idx) are exact over all rows, and searching for a repo
+ * that lives in chunk 5 has to find it. Load the remaining shards on demand,
+ * once, as soon as the user narrows the list. The default "all by stars"
+ * first paint still costs exactly one chunk. */
+let fullCataloguePromise = null;
+function ensureFullCatalogue(){
+  if(!SHARDED || fullCataloguePromise) return;
+  const narrowing = state.q.trim() || state.cat !== 'all' || state.lang ||
+                    state.minStars || state.since || state.favOnly ||
+                    state.refreshRows.length;
+  if(!narrowing) return;
+  const total = (DATA.idx && DATA.idx.total) || DATA.repos.length;
+  if(loadedChunkCount() * CHUNK_SIZE >= total) return;
+  fullCataloguePromise = ensureAllChunks().then(() => {
+    fullCataloguePromise = null;
+    render(false);   // keep the user's current scroll/visible range
+  });
+}
 function matchLocalTag(r){
   const t = state.tag.trim().toLowerCase();
   if(!t) return false;
@@ -392,6 +411,8 @@ function renderLoadmore(total, shown){
   $('showAllBtn').textContent = (EN() ? 'Show all ' : '显示全部 ') + total + (EN() ? '' : ' 个');
 }
 function render(resetVisible){
+  ensureFullCatalogue();
+  const loadingFull = !!(SHARDED && fullCataloguePromise);
   if(resetVisible !== false) state.visible = PAGE_SIZE;
   updateRailActive();
   if(state.view === 'tags') renderTagPanel();
@@ -406,11 +427,13 @@ function render(resetVisible){
       + ' · sort: <b>'+esc(sortText)+'</b>'
       + (state.cat !== 'all' ? ' · category <b>'+esc(catName(state.cat))+'</b>' : '')
       + (cov.unique ? ' · snapshot covers '+int(cov.unique) : '')
+      + (loadingFull ? ' · loading the full catalogue…' : '')
     : '<b>'+esc(VIEWNAME[state.view])+'</b> · 共 <b>'+arr.length+'</b> 个项目'
       + (shown.length < arr.length ? '，已显示 <b>'+shown.length+'</b> 个' : '，已全部显示')
       + ' · 排序：<b>'+esc(sortText)+'</b>'
       + (state.cat !== 'all' ? ' · 分类 <b>'+esc(catName(state.cat))+'</b>' : '')
-      + (cov.unique ? ' · 快照收录 '+int(cov.unique)+' 个' : '');
+      + (cov.unique ? ' · 快照收录 '+int(cov.unique)+' 个' : '')
+      + (loadingFull ? ' · 正在加载完整目录…' : '');
   if(state.view === 'tags' && !state.tag){
     $('list').innerHTML = '<div class="empty"><p class="empty__title">从标签出发，找目录之外的项目</p>'
       + '<p class="empty__body">点任意项目卡片上的 #标签，或在上方标签云里选一个；也可以直接输入标签，例如 rss、self-hosted、cli。</p>'
