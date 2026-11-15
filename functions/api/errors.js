@@ -82,7 +82,18 @@ function jsonResponse(obj, status) {
   });
 }
 
-export async function onRequestPost({ request, env, ctx }) {
+/* Pages Functions pass an EventContext with waitUntil() on the top-level
+ * object. Some Workers-style wrappers and local harnesses expose it on a
+ * nested ctx instead, so accept both shapes. */
+function waitUntilOf(context) {
+  const c = context || {};
+  if (typeof c.waitUntil === "function") return c.waitUntil.bind(c);
+  if (c.ctx && typeof c.ctx.waitUntil === "function") return c.ctx.waitUntil.bind(c.ctx);
+  return null;
+}
+
+export async function onRequestPost(context) {
+  const { request, env } = context;
   if (!sameOrigin(request)) return new Response(null, { status: 403 });
   const declared = Number(request.headers.get("content-length") || 0);
   if (declared > MAX_BODY_BYTES) return new Response(null, { status: 413 });
@@ -101,17 +112,30 @@ export async function onRequestPost({ request, env, ctx }) {
   if (kv) {
     const key = "err:" + Date.now() + ":" + Math.random().toString(36).slice(2, 8);
     const day = rec.t.slice(0, 10);
-    const writes = [
-      kv.put(key, JSON.stringify(rec), { expirationTtl: TTL_SECONDS }),
-      kv
-        .get("cnt:" + day)
-        .then((v) =>
-          kv.put("cnt:" + day, String((parseInt(v, 10) || 0) + 1), {
-            expirationTtl: TTL_SECONDS,
-          })
-        ),
-    ];
-    ctx.waitUntil(Promise.all(writes));
+    // CI probes exercise the write path without inflating the public daily
+    // error counters.
+    const isProbe = rec.page === "ci-probe";
+    const persist = (async () => {
+      const writes = [
+        kv.put(key, JSON.stringify(rec), { expirationTtl: TTL_SECONDS }),
+      ];
+      if (!isProbe) {
+        writes.push(
+          kv.get("cnt:" + day).then((v) =>
+            kv.put("cnt:" + day, String((parseInt(v, 10) || 0) + 1), {
+              expirationTtl: TTL_SECONDS,
+            })
+          )
+        );
+      }
+      await Promise.all(writes);
+    })().catch((e) => {
+      // A storage failure must never turn a beacon into a 500.
+      console.log("starscope-kv-write-failed " + String((e && e.message) || e));
+    });
+    const waitUntil = waitUntilOf(context);
+    if (waitUntil) waitUntil(persist);
+    else await persist; // no hook available: finish the writes before responding
   }
   // Always mirrored into Pages Functions logs, so even a binding-less deploy
   // keeps a queryable trail (dashboard → Functions → real-time logs).

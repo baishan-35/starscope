@@ -115,9 +115,36 @@ jobs:
         run: rm -f wrangler.toml
 
       - name: Publish to Cloudflare Pages (plain, no bindings)
+        id: deploy_plain
         if: steps.kv.outcome != 'success' || steps.deploy_kv.outcome == 'failure'
         uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy site --project-name=starscope --branch=main --commit-dirty=true
+
+      # Unit tests use a mocked context; only a live beacon proves the real
+      # Pages EventContext + KV binding actually work. The probe writes a
+      # record but deliberately does not increment the public daily counter.
+      - name: Verify error sink end to end (post-deploy)
+        if: steps.deploy_kv.outcome == 'success' || steps.deploy_plain.outcome == 'success'
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: |
+          set -euo pipefail
+          BASE="${SITE_URL:-https://starscope-adb.pages.dev}"
+          BASE="${BASE%/}"
+          CODE=""
+          for i in 1 2 3; do
+            CODE=$(curl -sS --max-time 20 -o /dev/null -w '%{http_code}' \
+              -X POST "$BASE/api/errors" \
+              -H "Origin: $BASE" -H 'Content-Type: application/json' \
+              --data '{"type":"event","category":"online","page":"ci-probe"}') || true
+            [ "$CODE" = "204" ] && break
+            sleep 5
+          done
+          echo "POST /api/errors -> $CODE"
+          if [ "$CODE" != "204" ]; then echo "error sink rejected a valid same-origin beacon"; exit 1; fi
+          BODY=$(curl -sS --max-time 20 "$BASE/api/errors")
+          echo "GET  /api/errors -> $BODY"
+          printf '%s' "$BODY" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const b=JSON.parse(s);if(b.enabled!==true){console.error("ERRORS_KV binding missing in production");process.exit(1)}})'

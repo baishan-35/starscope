@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /* Verifies the Cloudflare Pages Function /api/errors (functions/api/errors.js)
  * without a Workers runtime: imports the module through a data: URL, then
- * exercises onRequestPost / onRequestGet with stubbed Request/env/ctx.
+ * exercises onRequestPost / onRequestGet with stubbed Request/env/context,
+ * including the real Pages EventContext shape (top-level waitUntil).
  * Run: node tests/function-check.js
  */
 'use strict';
@@ -123,6 +124,37 @@ function makeKV() {
   check(body.enabled === true && body.last24h === 7 && body.last7d === 7,
     'GET aggregates last-24h and last-7d counters');
   check(res.headers.get('cache-control') === 'no-store', 'GET responses are no-store');
+
+  // 12. Real Pages EventContext: waitUntil is top-level, there is NO nested
+  //     ctx. Regression guard for the 500 that appeared once KV was bound.
+  kv = makeKV(); pending.length = 0;
+  res = await mod.onRequestPost({
+    request: req({ type: 'error', message: 'real context' }),
+    env: envOf(),
+    waitUntil: (p) => pending.push(p),
+  });
+  check(res.status === 204, 'real Pages EventContext (top-level waitUntil) -> 204');
+  await Promise.all(pending);
+  check([...kv.map.keys()].some(k => k.startsWith('err:')), 'real context still persists to KV');
+
+  // 13. Storage failure degrades to 204 instead of turning a beacon into a 500.
+  kv = { get: async () => { throw new Error('kv down'); }, put: async () => { throw new Error('kv down'); } };
+  pending.length = 0;
+  res = await mod.onRequestPost({
+    request: req({ type: 'error', message: 'failing kv' }),
+    env: envOf(),
+    waitUntil: (p) => pending.push(p),
+  });
+  check(res.status === 204, 'KV write failure does not 500 the beacon');
+  await Promise.all(pending);
+
+  // 14. CI probes exercise the write path without inflating public counters.
+  kv = makeKV(); pending.length = 0;
+  res = await run({ type: 'event', category: 'online', page: 'ci-probe' });
+  await Promise.all(pending);
+  check(res.status === 204, 'ci-probe beacon -> 204');
+  check([...kv.map.keys()].some(k => k.startsWith('err:')), 'ci-probe still exercises KV write');
+  check([...kv.map.keys()].every(k => !k.startsWith('cnt:')), 'ci-probe does not inflate daily counters');
 
   console.log(failed ? `\nfunction-check: ${failed} FAILED, ${passed} passed` : `\nfunction-check: all ${passed} checks passed`);
   process.exit(failed ? 1 : 0);
