@@ -22,22 +22,26 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      # Action majors below are the first that declare the Node 24 runtime
+      # (node20 was removed from runners in Sept 2026). setup-node installs
+      # Node 24 for the build itself: Node 20 hit EOL in April 2026 and
+      # wrangler 4 (default in wrangler-action@v4) requires Node 22+.
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "24"
 
       # Star-count history persists across runs so trending gains can be
       # computed as snapshot deltas (stars_now - stars_N_days_ago) instead of
       # scraped Trending text. First run starts empty and falls back to the
       # page text; coverage takes over as history accumulates.
       - name: Restore star-count history
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: stars_history.json
           key: stars-history-v1-${{ github.run_number }}
@@ -75,10 +79,10 @@ jobs:
         run: |
           set -euo pipefail
           TITLE="starscope-errors"
-          ID=$(npx --yes wrangler@3 kv namespace list 2>/dev/null \
+          ID=$(npx --yes wrangler@4 kv namespace list 2>/dev/null \
             | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{const a=JSON.parse(s);const n=a.find(x=>x.title.endsWith("starscope-errors"));if(n)console.log(n.id)}catch(e){}})' || true)
           if [ -z "$ID" ]; then
-            OUT=$(npx --yes wrangler@3 kv namespace create "$TITLE" 2>&1) || { echo "$OUT"; exit 1; }
+            OUT=$(npx --yes wrangler@4 kv namespace create "$TITLE" 2>&1) || { echo "$OUT"; exit 1; }
             ID=$(printf '%s' "$OUT" | grep -oE '[0-9a-f]{32}' | head -1 || true)
             if [ -z "$ID" ]; then echo "could not parse namespace id:"; echo "$OUT"; exit 1; fi
           fi
@@ -97,7 +101,7 @@ jobs:
         id: deploy_kv
         continue-on-error: true
         if: steps.kv.outcome == 'success'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -109,7 +113,7 @@ jobs:
 
       - name: Publish to Cloudflare Pages (plain, no bindings)
         if: steps.kv.outcome != 'success' || steps.deploy_kv.outcome == 'failure'
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
